@@ -9,7 +9,7 @@ struct TorrentProvider: TimelineProvider {
         // Widget gallery / quick preview — use whatever the app last cached,
         // no network call, so the gallery renders instantly.
         let cached = WidgetSnapshot.load()
-        completion(TorrentEntry(date: Date(), rows: Array(cached.rows.prefix(4)), errorMessage: cached.errorMessage))
+        completion(TorrentEntry(date: Date(), rows: Array(cached.rows.prefix(6)), errorMessage: cached.errorMessage))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TorrentEntry>) -> Void) {
@@ -31,7 +31,7 @@ struct TorrentProvider: TimelineProvider {
 
             var entry: TorrentEntry
             do {
-                let rows = try await client.fetchTopTorrents(limit: 4)
+                let rows = try await client.fetchTopTorrents(limit: 6)
                 WidgetSnapshot(rows: rows, fetchedAt: Date(), errorMessage: nil).save()
                 entry = TorrentEntry(date: Date(), rows: rows, errorMessage: nil)
             } catch {

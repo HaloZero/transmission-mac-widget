@@ -11,8 +11,8 @@ struct TransmissionWidgetView: View {
 
     private var maxRows: Int {
         switch family {
-        case .systemMedium: return 2
-        default: return 3
+        case .systemMedium: return 3
+        default: return 6
         }
     }
 
@@ -156,7 +156,13 @@ struct TransmissionWidget: Widget {
 #Preview(as: .systemMedium) {
     TransmissionWidget()
 } timeline: {
-    TorrentEntry(date: .now, rows: Array(TorrentInfo.fixtures.prefix(4)), errorMessage: nil)
+    TorrentEntry(date: .now, rows: TorrentInfo.fixtures, errorMessage: nil)
+}
+
+#Preview(as: .systemLarge) {
+    TransmissionWidget()
+} timeline: {
+    TorrentEntry(date: .now, rows: TorrentInfo.fixtures, errorMessage: nil)
 }
 
 #Preview("Empty", as: .systemMedium) {

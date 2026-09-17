@@ -63,7 +63,7 @@ extension MockTransmissionClient.Scenario {
     func makeSnapshot() async -> WidgetSnapshot {
         let client = MockTransmissionClient(scenario: self)
         do {
-            let rows = try await client.fetchTopTorrents(limit: 4)
+            let rows = try await client.fetchTopTorrents(limit: 6)
             return WidgetSnapshot(rows: rows, fetchedAt: Date(), errorMessage: nil)
         } catch {
             return WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: error.localizedDescription)
@@ -81,6 +81,7 @@ extension TorrentInfo {
         TorrentInfo(id: 2, name: "Some.Documentary.2025.1080p.WEB", status: .downloading, percentDone: 0.88, rateDownload: 1_200_000, rateUpload: 0, eta: 95),
         TorrentInfo(id: 3, name: "Podcast.Archive.Vol03", status: .seeding, percentDone: 1.0, rateDownload: 0, rateUpload: 950_000, eta: -1),
         TorrentInfo(id: 4, name: "debian-12.6.0-amd64-netinst.iso", status: .checking, percentDone: 0.15, rateDownload: 0, rateUpload: 0, eta: -2),
-        TorrentInfo(id: 5, name: "Old.Show.S01.Complete", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1)
+        TorrentInfo(id: 5, name: "Old.Show.S01.Complete", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1),
+        TorrentInfo(id: 6, name: "Linux.Conf.Talks.2026", status: .downloading, percentDone: 0.07, rateDownload: 320_000, rateUpload: 0, eta: 4200)
     ]
 }
