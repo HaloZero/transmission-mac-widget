@@ -56,6 +56,9 @@ struct ContentView: View {
                 Button("Normal") { loadDebugScenario(.normal) }
                 Button("Empty") { loadDebugScenario(.empty) }
                 Button("Error") { loadDebugScenario(.failure) }
+                Divider()
+                Button("Resume Live Data") { resumeLiveData() }
+                    .disabled(!DebugScenarioLock.isLocked)
             }
             .menuStyle(.borderlessButton)
             #endif
@@ -83,13 +86,22 @@ struct ContentView: View {
         case .failure:
             newSnapshot = WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: "Mock failure — simulated RPC error")
         }
+        DebugScenarioLock.lock()
         newSnapshot.save()
         snapshot = newSnapshot
         reloadWidget()
     }
+
+    private func resumeLiveData() {
+        DebugScenarioLock.unlock()
+        Task { await refresh() }
+    }
     #endif
 
     private func refresh() async {
+        #if DEBUG
+        guard !DebugScenarioLock.isLocked else { return }
+        #endif
         isRefreshing = true
         defer { isRefreshing = false }
 

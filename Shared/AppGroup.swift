@@ -26,6 +26,29 @@ enum AppGroup {
     }
 }
 
+#if DEBUG
+/// Freezes the widget/host on whatever `WidgetSnapshot` the debug scenario
+/// picker last wrote, so `TorrentProvider.getTimeline` and `ContentView`'s
+/// auto-refresh stop racing it with a real (or mock) fetch that would
+/// silently overwrite it the moment `reloadWidget()` runs. Debug-only: the
+/// lock can never exist in a Release build, so this can't affect real users.
+enum DebugScenarioLock {
+    private static let key = "debugScenarioLocked"
+
+    static var isLocked: Bool {
+        AppGroup.defaults.bool(forKey: key)
+    }
+
+    static func lock() {
+        AppGroup.defaults.set(true, forKey: key)
+    }
+
+    static func unlock() {
+        AppGroup.defaults.set(false, forKey: key)
+    }
+}
+#endif
+
 /// Non-secret connection settings. The password is stored separately in the
 /// Keychain (see KeychainHelper) since UserDefaults, even in an App Group,
 /// is not encrypted at rest.

@@ -24,6 +24,16 @@ struct TorrentProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TorrentEntry>) -> Void) {
+        #if DEBUG
+        if DebugScenarioLock.isLocked {
+            // A debug scenario is frozen — serve it as-is instead of racing
+            // it with a real fetch that would immediately overwrite it.
+            let cached = WidgetSnapshot.load()
+            let entry = TorrentEntry(date: Date(), rows: cached.rows, errorMessage: cached.errorMessage)
+            completion(Timeline(entries: [entry], policy: .never))
+            return
+        }
+        #endif
         Task {
             let client = makeTransmissionClient()
 
