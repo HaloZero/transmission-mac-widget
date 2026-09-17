@@ -3,8 +3,7 @@
 A macOS menu-bar app + WidgetKit widget that shows your most active
 Transmission torrents (status, progress, ↓/↑ rate), talking directly to
 Transmission's RPC endpoint — the same one `transmission-remote` and the
-web UI use. Row counts per widget size aren't hardcoded here — they live
-in `Shared/Constants.swift`, the single place that controls them.
+web UI use.
 
 The project is described by `project.yml` for XcodeGen; the generated
 `.xcodeproj` is a build artifact and isn't checked into git.

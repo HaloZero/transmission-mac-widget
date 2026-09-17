@@ -8,6 +8,9 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 
+# Makefile archive/export output
+/build/
+
 # Swift Package Manager
 .build/
 .swiftpm/
