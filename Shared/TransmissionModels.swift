@@ -19,6 +19,17 @@ enum TorrentStatus: Int, Codable {
         case .seedWaiting, .seeding: return "arrow.up.circle.fill"
         }
     }
+
+    var statusLabel: String {
+        switch self {
+        case .stopped: return "Paused"
+        case .checkWaiting, .checking: return "Checking"
+        case .downloadWaiting: return "Waiting"
+        case .downloading: return "Downloading"
+        case .seedWaiting: return "Waiting"
+        case .seeding: return "Seeding"
+        }
+    }
 }
 
 struct TorrentInfo: Codable, Identifiable, Equatable {
@@ -39,6 +50,43 @@ struct TorrentInfo: Codable, Identifiable, Equatable {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .binary
         return formatter.string(fromByteCount: Int64(bytesPerSecond)) + "/s"
+    }
+
+    /// Best-effort content icon in the spirit of Transmission's own torrent
+    /// list, which shows what kind of thing you're getting (folder, disk
+    /// image, archive, media, etc.) rather than a generic file glyph. The
+    /// RPC payload here doesn't include a file list, so this infers purely
+    /// from the torrent's name — good enough for a quick visual read, not a
+    /// substitute for real per-file type info.
+    var contentSymbolName: String {
+        let extensionToSymbol: [String: String] = [
+            "iso": "opticaldisc.fill",
+            "img": "opticaldisc.fill",
+            "dmg": "externaldrive.fill",
+            "pkg": "shippingbox.fill",
+            "zip": "doc.zipper",
+            "rar": "doc.zipper",
+            "7z": "doc.zipper",
+            "mp4": "film",
+            "mkv": "film",
+            "avi": "film",
+            "mov": "film",
+            "mp3": "music.note",
+            "flac": "music.note",
+            "wav": "music.note",
+            "pdf": "doc.richtext",
+            "epub": "book.closed"
+        ]
+
+        if let ext = name.split(separator: ".").last.map({ $0.lowercased() }),
+           let symbol = extensionToSymbol[ext] {
+            return symbol
+        }
+
+        // No recognizable file extension usually means a multi-file release
+        // (season pack, discography, a magnet link whose metadata hasn't
+        // resolved into a single file) — closest visual match is a folder.
+        return "folder.fill"
     }
 }
 

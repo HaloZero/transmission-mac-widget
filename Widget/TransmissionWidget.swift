@@ -63,7 +63,6 @@ struct TransmissionWidgetView: View {
 
     private var maxRows: Int {
         switch family {
-        case .systemSmall: return 1
         case .systemMedium: return 2
         default: return 3
         }
@@ -122,35 +121,73 @@ private struct WidgetTorrentRow: View {
     let row: TorrentInfo
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: row.status.symbolName)
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: row.contentSymbolName)
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(row.name)
                     .font(.subheadline)
                     .lineLimit(1)
-                HStack(spacing: 6) {
-                    ProgressView(value: row.percentDone)
-                        .progressViewStyle(.linear)
-                    Text(row.progressLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
+                Text("\(row.status.statusLabel) · \(row.progressLabel) · ↓\(TorrentInfo.formattedRate(row.rateDownload)) · ↑\(TorrentInfo.formattedRate(row.rateUpload))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 3) {
-                Label(TorrentInfo.formattedRate(row.rateDownload), systemImage: "arrow.down")
-                Label(TorrentInfo.formattedRate(row.rateUpload), systemImage: "arrow.up")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            TorrentProgressCircle(percentDone: row.percentDone)
         }
+    }
+}
+
+/// A filled pie-style progress indicator: the wedge grows clockwise from the
+/// top with `percentDone`, blue while in progress and green once complete.
+/// The percentage label only appears while incomplete — a full green circle
+/// already says "done" without it.
+private struct TorrentProgressCircle: View {
+    let percentDone: Double
+
+    private var clampedPercent: Double { min(max(percentDone, 0), 1) }
+    private var isComplete: Bool { clampedPercent >= 1.0 }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.secondary.opacity(0.15))
+
+            PieSlice(percent: clampedPercent)
+                .fill(isComplete ? Color.green : Color.blue)
+
+            if !isComplete {
+                Text(String(format: "%.0f", clampedPercent * 100))
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+        }
+        .frame(width: 24, height: 24)
+    }
+}
+
+private struct PieSlice: Shape {
+    var percent: Double
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        let startAngle = Angle(degrees: -90)
+        let endAngle = Angle(degrees: -90 + 360 * percent)
+
+        var path = Path()
+        path.move(to: center)
+        path.addLine(to: CGPoint(x: center.x, y: center.y - radius))
+        path.addArc(center: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -163,7 +200,7 @@ struct TransmissionWidget: Widget {
         }
         .configurationDisplayName("Transmission")
         .description("Shows your most active torrents.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
