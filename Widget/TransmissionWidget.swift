@@ -14,20 +14,29 @@ struct TransmissionWidgetView: View {
     }
 
     var body: some View {
-        Group {
-            if let errorMessage = entry.errorMessage, entry.rows.isEmpty {
-                WidgetEmptyStateView(family: family, systemImage: "exclamationmark.triangle", message: errorMessage, isError: true)
-            } else if entry.rows.isEmpty {
-                WidgetEmptyStateView(family: family, systemImage: "tray", message: "No active torrents", isError: false)
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(entry.rows.prefix(maxRows)) { row in
-                        WidgetTorrentRow(row: row)
+        VStack(spacing: 4) {
+            Group {
+                if let errorMessage = entry.errorMessage, entry.rows.isEmpty {
+                    WidgetEmptyStateView(family: family, systemImage: "exclamationmark.triangle", message: errorMessage, isError: true)
+                } else if entry.rows.isEmpty {
+                    WidgetEmptyStateView(family: family, systemImage: "tray", message: "No active torrents", isError: false)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(entry.rows.prefix(maxRows)) { row in
+                            WidgetTorrentRow(row: row)
+                        }
                     }
-                    Spacer(minLength: 0)
+                    .padding(12)
                 }
-                .padding(12)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
+
+            Text("Updated \(entry.date, style: .relative) ago")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
         }
         .containerBackground(.fill.tertiary, for: .widget)
         .overlay(alignment: .topTrailing) {
