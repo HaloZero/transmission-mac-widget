@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     /// Defaults to whatever `TransmissionClientFactory.make()` decides (real client,
@@ -53,6 +54,11 @@ struct ContentView: View {
 
             SettingsLink {
                 Text("Preferences…")
+            }
+            .buttonStyle(.plain)
+
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.plain)
 
