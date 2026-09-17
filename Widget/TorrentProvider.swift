@@ -21,29 +21,33 @@ struct TorrentProvider: TimelineProvider {
                 // real fetch that would immediately overwrite it.
                 let snapshot = await forced.makeSnapshot()
                 snapshot.save()
-                let entry = TorrentEntry(date: Date(), rows: snapshot.rows, errorMessage: snapshot.errorMessage)
+                let entry = TorrentEntry(date: snapshot.fetchedAt, rows: snapshot.rows, errorMessage: snapshot.errorMessage)
                 completion(Timeline(entries: [entry], policy: .never))
                 return
             }
             #endif
 
-            let client = makeTransmissionClient()
+            let cached = WidgetSnapshot.load()
+            let cacheAge = Date().timeIntervalSince(cached.fetchedAt)
 
-            var entry: TorrentEntry
-            do {
-                let rows = try await client.fetchTopTorrents(limit: Constants.fetchLimit)
-                WidgetSnapshot(rows: rows, fetchedAt: Date(), errorMessage: nil).save()
-                entry = TorrentEntry(date: Date(), rows: rows, errorMessage: nil)
-            } catch {
-                // Fall back to the last good snapshot rather than showing a
-                // blank widget the moment the Mac mini is asleep or offline.
-                let cached = WidgetSnapshot.load()
-                entry = TorrentEntry(date: Date(), rows: cached.rows, errorMessage: error.localizedDescription)
+            let entry: TorrentEntry
+            if cacheAge < Constants.cacheStalenessThreshold {
+                // The host app's background poller is keeping this fresh —
+                // just display it instead of doing a redundant fetch of our
+                // own inside the widget extension.
+                entry = TorrentEntry(date: cached.fetchedAt, rows: cached.rows, errorMessage: cached.errorMessage)
+            } else {
+                // Cache is stale — the host app likely isn't running (not a
+                // login item yet, just rebooted, etc.). Fall back to
+                // fetching directly so the widget doesn't stay stuck.
+                let fresh = await fetchSnapshot(using: makeTransmissionClient())
+                if fresh.errorMessage == nil {
+                    fresh.save()
+                }
+                entry = TorrentEntry(date: fresh.fetchedAt, rows: fresh.rows, errorMessage: fresh.errorMessage)
             }
 
-            // Refresh every 5 minutes — frequent enough to feel live without
-            // burning the widget's limited refresh budget. Adjust to taste.
-            let nextRefresh = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date().addingTimeInterval(300)
+            let nextRefresh = Date().addingTimeInterval(Constants.widgetReloadInterval)
             completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
         }
     }

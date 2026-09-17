@@ -60,7 +60,7 @@ struct SettingsView: View {
             : TransmissionRPCClient(settings: settings, password: password)
 
         do {
-            let rows = try await client.fetchTopTorrents(limit: 4)
+            let rows = try await client.fetchTopTorrents(limit: Constants.fetchLimit)
             statusMessage = "✓ Connected — \(rows.count) active torrent\(rows.count == 1 ? "" : "s")"
         } catch {
             statusMessage = "✗ \(error.localizedDescription)"

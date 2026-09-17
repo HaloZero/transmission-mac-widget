@@ -36,7 +36,7 @@ actor TransmissionRPCClient {
 
     /// Fetches the torrents with the highest combined I/O, most active first,
     /// capped at `limit` rows — this is what the widget renders.
-    func fetchTopTorrents(limit: Int = 4) async throws -> [TorrentInfo] {
+    func fetchTopTorrents(limit: Int) async throws -> [TorrentInfo] {
         let fields = ["id", "name", "status", "percentDone", "rateDownload", "rateUpload", "eta"]
         let payload: [String: Any] = [
             "method": "torrent-get",
