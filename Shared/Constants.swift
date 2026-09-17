@@ -20,17 +20,8 @@ enum Constants {
     /// data to show.
     static let fetchLimit = maxRows.values.max() ?? defaultMaxRows
 
-    /// How often the host app polls Transmission and refreshes the shared
-    /// cache while it's running
-    static let hostPollInterval: TimeInterval = 5
-
-    /// How often the host app explicitly asks WidgetKit to reload the
-    /// widget's timeline
-    static let widgetReloadInterval: TimeInterval = 10
-
-    /// If the cached snapshot is older than this, the host app's poller
-    /// isn't keeping it fresh (not running, not a login item yet, just
-    /// rebooted, etc.) — the widget's own TimelineProvider falls back to
-    /// fetching directly rather than displaying indefinitely stale data.
-    static let cacheStalenessThreshold: TimeInterval = 180
+    /// How often the widget asks WidgetKit to check back for a new timeline
+    /// entry — a free ask, since a cache hit costs nothing; WidgetKit's own
+    /// budget/visibility throttling decides the real-world cadence.
+    static let refreshInterval: TimeInterval = 5
 }

@@ -57,28 +57,18 @@ actor MockTransmissionClient: TransmissionFetching {
 #if DEBUG
 extension MockTransmissionClient.Scenario {
     /// Force a scenario for local testing by editing this line directly and
-    /// rebuilding — no scheme or environment-variable configuration needed.
-    /// The host app and the widget extension both compile this same literal
-    /// into their own binary, so they always agree without any cross-process
-    /// state. Leave `nil` (the default) for live data; this entire file is
-    /// compiled out of Release builds by `#if DEBUG`.
+    /// rebuilding — no shared storage needed, since the widget is the only
+    /// process that reads it. Leave `nil` (the default) for live data; this
+    /// entire file is compiled out of Release builds by `#if DEBUG`.
     static let hardcoded: MockTransmissionClient.Scenario? = nil
 
-    private static let forcedKey = "debugForcedScenario"
-
-    /// What's actually forced right now, checked explicitly wherever data
-    /// would otherwise be fetched: `hardcoded` above if set, otherwise
-    /// whatever the menu bar's "Debug: Load Scenario" picker last chose.
-    /// `nil` means live data. A single computed answer instead of a
-    /// separate lock flag that can drift from what's actually cached.
-    static var forced: MockTransmissionClient.Scenario? {
-        get { hardcoded ?? AppGroup.defaults.string(forKey: forcedKey).flatMap(Self.init(rawValue:)) }
-        set { AppGroup.defaults.set(newValue?.rawValue, forKey: forcedKey) }
-    }
+    /// What's actually forced right now — just `hardcoded` above, checked
+    /// wherever data would otherwise be fetched.
+    static var forced: MockTransmissionClient.Scenario? { hardcoded }
 
     /// Runs this scenario through the mock client and returns a ready-to-
-    /// save snapshot — the one place that turns "which scenario" into
-    /// concrete rows/error text, shared by the host app and the widget.
+    /// display snapshot — the one place that turns "which scenario" into
+    /// concrete rows/error text.
     func makeSnapshot() async -> WidgetSnapshot {
         await SnapshotFetcher.fetch(using: MockTransmissionClient(scenario: self))
     }

@@ -1,28 +1,17 @@
 import Foundation
 
-enum TransmissionRPCError: LocalizedError {
-    case noBaseURL
-    case badResponse
-    case http(Int)
-    case rpc(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .noBaseURL: return "No Transmission host configured."
-        case .badResponse: return "Unexpected response from Transmission."
-        case .http(let code): return "Transmission returned HTTP \(code)."
-        case .rpc(let message): return message
-        }
-    }
-}
-
 /// Talks to Transmission's RPC endpoint (transmission-daemon / Transmission's
 /// built-in web UI server). Reference: https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md
 ///
 /// Transmission requires a rolling `X-Transmission-Session-Id` header. A
 /// request without a valid one gets a 409 whose response headers carry the
 /// fresh ID — this client caches it and retries once automatically.
-actor TransmissionRPCClient {
+///
+/// The widget extension is the only thing that ever constructs this (see
+/// TorrentProvider) — there's no host-side fetching anymore.
+/// `TransmissionRPCError` (which `MockTransmissionClient` also throws) lives
+/// in Shared/TransmissionFetching.swift instead, alongside the protocol.
+actor TransmissionRPCClient: TransmissionFetching {
     private var sessionID: String?
     private let settings: TransmissionSettings
     private let password: String?

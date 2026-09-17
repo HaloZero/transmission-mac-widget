@@ -47,17 +47,28 @@ First launch will likely get Gatekeeper's "unidentified developer"
 warning since it's not notarized — right-click the app → **Open** once to
 bypass that; after that it opens normally. Since it's set as
 `LSUIElement`, it won't show a Dock icon — look for it in the menu bar.
-Add it to **System Settings → General → Login Items** to have it launch
-at login — worth doing, since the host app's own background refresh (see
-Warnings below) only runs while it's actually open.
 
-## Transmission-side settings
+The widget itself works independent of whether this app is running —
+WidgetKit manages the extension's process on its own schedule. The host
+app is just a menu bar icon with a Quit item; adding it to
+**System Settings → General → Login Items** is optional, purely for
+convenience.
+
+## Configuring the widget
+
+There's no host app settings window — the widget extension does
+everything on its own (fetching, caching, configuration), and the host
+app is just a menu bar icon with a Quit item. Add the widget (Notification
+Center → Edit Widgets, or long-press an existing one on the Desktop) and
+choose **Edit Widget** to set the host, port, RPC path, HTTPS toggle,
+username, and password. Each widget instance keeps its own configuration,
+managed by WidgetKit itself — no App Group or Keychain sharing involved.
 
 In Transmission's settings (`settings.json` or the daemon's web UI
 preferences), you'll want:
 
 - `rpc-enabled: true`
-- `rpc-port`, `rpc-url` matching what you enter in the app (defaults
+- `rpc-port`, `rpc-url` matching what you enter in Edit Widget (defaults
   here assume port `9091`, path `/transmission/rpc`)
 - If Transmission is reachable only from a different host/network than
   the one this app runs on, make sure `rpc-whitelist-enabled` /
@@ -65,37 +76,31 @@ preferences), you'll want:
   connections from wherever this Mac actually connects from.
 - Basic auth (`rpc-authentication-required`, `rpc-username`,
   `rpc-password`) is optional but recommended if the daemon is
-  reachable beyond localhost; the app's Settings screen has fields for
-  both.
+  reachable beyond localhost.
 
 ## Warnings
 
 - **Free Apple ID signing expires weekly.** If you're signing with a free
   personal team (no $99/year Developer Program), the provisioning profile
-  Xcode generates for the App Group + Keychain Sharing entitlements
-  expires after about a week — you'll need to `make app` (or `install`)
-  again periodically to refresh it. A paid Developer ID membership avoids
-  this entirely; for a personal home-server tool either is fine, just
-  know the free path needs an occasional rebuild.
-- **Refresh cadence has two knobs, both in `Shared/Constants.swift`.**
-  `hostPollInterval` is how often the host app refreshes the
-  shared cache, and also what the widget itself requests via its
-  timeline policy — free to ask for, since a cache hit costs nothing;
+  Xcode generates expires after about a week — you'll need to `make app`
+  (or `install`) again periodically to refresh it. A paid Developer ID
+  membership avoids this entirely; for a personal home-server tool either
+  is fine, just know the free path needs an occasional rebuild.
+- **The password is visible in the Edit Widget sheet.** WidgetKit's
+  configuration form has no secure/masked field type, so it's stored (and
+  shown) as plain text alongside the other settings. Fine for a personal,
+  local-network tool; don't reuse a password you care about elsewhere.
+- **App Groups don't work on a free Personal Team**, which is why the
+  widget owns everything itself instead of splitting state with the host
+  app — Apple only provisions the App Groups capability for a paid
+  Developer Program membership, and this project intentionally avoids
+  needing it at all.
+- **Refresh cadence** is `Constants.refreshInterval` in
+  `Shared/Constants.swift` — how often the widget asks WidgetKit to check
+  back for a new timeline entry. Free to ask for something short, since
   WidgetKit's own budget/visibility throttling decides the real-world
-  cadence. `widgetReloadInterval` is a coarser backstop the
-  host uses to explicitly poke WidgetKit in case the widget isn't
-  visible enough for its own schedule to be honored.
-  `cacheStalenessThreshold` is when the widget gives up on the cache
-  and fetches directly itself.
+  cadence regardless.
 - Widget-animation tricks (private `_ClockHandRotationEffect`, or
   timer+font-ligature flicker) don't fetch new data — they just make
   stale data look busier. The refresh button forces an immediate
   check, but it still shares WidgetKit's system-wide reload budget.
-- Sort order / row count could easily become a `WidgetConfigurationIntent`
-  if you want per-widget-instance settings (e.g. one small widget for
-  downloads, one for seeding) instead of the shared global settings used
-  here.
-- If you'd rather not deal with Keychain access groups at all, you can
-  drop `KeychainHelper` and store the password directly in the App
-  Group `UserDefaults` alongside the rest of `TransmissionSettings` —
-  less secure, but one less capability to configure.

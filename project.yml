@@ -25,7 +25,6 @@ targets:
       base:
         INFOPLIST_KEY_LSUIElement: "YES"          # menu-bar only, no Dock icon
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
-        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Connects to your Transmission server on your local network to show torrent status."
         GENERATE_INFOPLIST_FILE: "YES"
         ENABLE_HARDENED_RUNTIME: "YES"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -39,15 +38,10 @@ targets:
     entitlements:
       path: App/TransmissionWidgetHost.entitlements
       properties:
-        # App Sandbox is off: sharing the torrent cache/settings between this
-        # app and the widget extension relies on a shared UserDefaults suite
-        # (see Shared/AppGroup.swift), which needs the App Groups capability —
-        # and Apple only provisions that for a paid Developer Program team,
-        # not a free Personal Team. Sandboxed + a plain shared-file mechanism
-        # would be the alternative if this ever moves to a paid team.
-        com.apple.security.network.client: true
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)com.halozero.transmissionwidget
+        # This app does nothing but show a menu bar icon + Quit — the widget
+        # extension owns fetching, caching, and configuration entirely on
+        # its own. No network/App Group/Keychain entitlements needed here.
+        com.apple.security.app-sandbox: true
     dependencies:
       - target: TransmissionWidgetExtension
         embed: true
@@ -80,9 +74,8 @@ targets:
     entitlements:
       path: Widget/TransmissionWidgetExtension.entitlements
       properties:
+        com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)com.halozero.transmissionwidget
 
   ScreenshotRenderer:
     type: tool
@@ -92,6 +85,7 @@ targets:
       - path: Widget/TransmissionWidgetView.swift
       - path: Widget/TorrentEntry.swift
       - path: Widget/TorrentProvider.swift
+      - path: Widget/TransmissionWidgetConfigurationIntent.swift
       - path: Tools/ScreenshotRenderer
     settings:
       base:

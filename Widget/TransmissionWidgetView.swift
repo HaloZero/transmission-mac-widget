@@ -56,15 +56,6 @@ struct TransmissionWidgetView: View {
             .padding(.bottom, 8)
         }
         .containerBackground(.fill.tertiary, for: .widget)
-        .overlay(alignment: .topTrailing) {
-            Button(intent: OpenSettingsIntent()) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .padding(8)
-            }
-            .buttonStyle(.plain)
-        }
     }
 }
 
@@ -167,7 +158,11 @@ struct TransmissionWidget: Widget {
     let kind = "TransmissionWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: TorrentProvider()) { entry in
+        AppIntentConfiguration(
+            kind: kind,
+            intent: TransmissionWidgetConfigurationIntent.self,
+            provider: TorrentProvider()
+        ) { entry in
             TransmissionWidgetView(entry: entry)
         }
         .configurationDisplayName(configurationDisplayName)

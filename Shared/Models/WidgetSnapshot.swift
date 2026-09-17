@@ -1,8 +1,9 @@
 import Foundation
 
-/// What gets cached into the App Group so the widget has something to show
-/// even before its own network refresh completes, and so the host app's
-/// last-known state matches the widget.
+/// Cached locally (plain UserDefaults.standard — the widget is the only
+/// process that ever reads or writes this) so the widget has something to
+/// show instantly in the gallery/preview, and so a transient fetch failure
+/// can fall back to the last-good rows instead of going blank.
 struct WidgetSnapshot: Codable {
     var rows: [TorrentInfo]
     var fetchedAt: Date
@@ -26,7 +27,7 @@ struct WidgetSnapshot: Codable {
     private static let key = "widgetSnapshot"
 
     static func load() -> WidgetSnapshot {
-        guard let data = AppGroup.defaults.data(forKey: key),
+        guard let data = UserDefaults.standard.data(forKey: key),
               let decoded = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
             return .empty
         }
@@ -35,7 +36,7 @@ struct WidgetSnapshot: Codable {
 
     func save() {
         if let data = try? JSONEncoder().encode(self) {
-            AppGroup.defaults.set(data, forKey: WidgetSnapshot.key)
+            UserDefaults.standard.set(data, forKey: WidgetSnapshot.key)
         }
     }
 }
