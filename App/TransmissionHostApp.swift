@@ -24,12 +24,6 @@ struct TransmissionHostApp: App {
     }
 }
 
-/// Call this after saving settings, or on a manual refresh, so the widget
-/// doesn't wait for its own timeline schedule to pick up the change.
-func reloadWidget() {
-    WidgetCenter.shared.reloadAllTimelines()
-}
-
 /// Keeps the shared cache fresh while the host app is running, independent
 /// of whether the menu bar dropdown is open. This is a plain background
 /// loop, not a widget reload, so it isn't subject to WidgetKit's daily

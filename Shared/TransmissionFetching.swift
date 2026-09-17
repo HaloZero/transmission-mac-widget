@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 
 /// All-time cumulative byte totals, straight from Transmission's
 /// `session-stats` RPC (`cumulative-stats`) — the daemon's own running
@@ -105,4 +106,12 @@ func fetchSnapshot(using client: any TransmissionFetching) async -> WidgetSnapsh
             uploadedSinceLastRefresh: 0
         )
     }
+}
+
+/// Call this after saving settings or refreshing data, so the widget
+/// doesn't wait for its own timeline schedule to pick up the change.
+/// Lives here (not App/) so both the host app and the widget extension's
+/// own refresh button can call it.
+func reloadWidget() {
+    WidgetCenter.shared.reloadAllTimelines()
 }

@@ -31,12 +31,20 @@ struct TransmissionWidgetView: View {
             }
             .frame(maxHeight: .infinity, alignment: .top)
 
-            Text("Updated \(entry.date, style: .relative) ago")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                Text("Updated \(entry.date, style: .relative) ago")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Button(intent: RefreshTorrentsIntent()) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
         }
         .containerBackground(.fill.tertiary, for: .widget)
         .overlay(alignment: .topTrailing) {
