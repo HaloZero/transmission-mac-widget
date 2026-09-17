@@ -87,6 +87,27 @@ actor TransmissionRPCClient {
         return Array(sorted.prefix(limit))
     }
 
+    /// All-time cumulative download/upload totals from Transmission's own
+    /// running counters (`cumulative-stats`, not `current-stats` — the
+    /// latter resets whenever the daemon restarts, which would corrupt a
+    /// "since last refresh" diff). Callers compute the delta themselves by
+    /// comparing against the previous poll's totals.
+    func fetchSessionTotals() async throws -> SessionTotals {
+        let payload: [String: Any] = ["method": "session-stats"]
+
+        let json = try await send(payload)
+        guard
+            let arguments = json["arguments"] as? [String: Any],
+            let cumulative = arguments["cumulative-stats"] as? [String: Any],
+            let downloaded = cumulative["downloadedBytes"] as? Int,
+            let uploaded = cumulative["uploadedBytes"] as? Int
+        else {
+            throw TransmissionRPCError.badResponse
+        }
+
+        return SessionTotals(downloadedBytes: downloaded, uploadedBytes: uploaded)
+    }
+
     // MARK: - Transport
 
     private func send(_ payload: [String: Any]) async throws -> [String: Any] {

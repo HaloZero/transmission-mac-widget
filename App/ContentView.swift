@@ -45,6 +45,12 @@ struct ContentView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
+            if snapshot.downloadedSinceLastRefresh > 0 || snapshot.uploadedSinceLastRefresh > 0 {
+                Text("Since last refresh: ↓\(TorrentInfo.formattedBytes(snapshot.downloadedSinceLastRefresh)) · ↑\(TorrentInfo.formattedBytes(snapshot.uploadedSinceLastRefresh))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             SettingsLink {
                 Text("Preferences…")
             }
@@ -93,15 +99,11 @@ struct ContentView: View {
         defer { isRefreshing = false }
 
         let client = self.client ?? makeTransmissionClient()
-
-        do {
-            let rows = try await client.fetchTopTorrents(limit: 4)
-            let newSnapshot = WidgetSnapshot(rows: rows, fetchedAt: Date(), errorMessage: nil)
+        let newSnapshot = await fetchSnapshot(using: client)
+        snapshot = newSnapshot
+        if newSnapshot.errorMessage == nil {
             newSnapshot.save()
-            snapshot = newSnapshot
             reloadWidget()
-        } catch {
-            snapshot.errorMessage = error.localizedDescription
         }
     }
 }

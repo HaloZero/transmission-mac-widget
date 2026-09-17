@@ -52,6 +52,15 @@ struct TorrentInfo: Codable, Identifiable, Equatable {
         return formatter.string(fromByteCount: Int64(bytesPerSecond)) + "/s"
     }
 
+    /// A plain byte total (no `/s` rate suffix) — for cumulative amounts
+    /// like "downloaded since last refresh" rather than a live speed.
+    static func formattedBytes(_ bytes: Int) -> String {
+        guard bytes > 0 else { return "—" }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .binary
+        return formatter.string(fromByteCount: Int64(bytes))
+    }
+
     /// Best-effort content icon in the spirit of Transmission's own torrent
     /// list, which shows what kind of thing you're getting (folder, disk
     /// image, archive, media, etc.) rather than a generic file glyph. The
@@ -97,6 +106,19 @@ struct WidgetSnapshot: Codable {
     var rows: [TorrentInfo]
     var fetchedAt: Date
     var errorMessage: String?
+
+    /// All-time cumulative totals as of this snapshot's fetch, from
+    /// Transmission's `session-stats` RPC — used to compute the *Since*
+    /// fields on the next poll. Not something anyone displays directly.
+    var cumulativeDownloaded: Int = 0
+    var cumulativeUploaded: Int = 0
+
+    /// Bytes moved between this snapshot and the previous one. Zero on the
+    /// very first poll ever (no prior total to diff against) rather than
+    /// the misleading "entire all-time total" that a naive diff-from-zero
+    /// would produce.
+    var downloadedSinceLastRefresh: Int = 0
+    var uploadedSinceLastRefresh: Int = 0
 
     static let empty = WidgetSnapshot(rows: [], fetchedAt: .distantPast, errorMessage: nil)
 

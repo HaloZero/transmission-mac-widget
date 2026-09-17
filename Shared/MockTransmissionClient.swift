@@ -33,6 +33,25 @@ actor MockTransmissionClient: TransmissionFetching {
             throw TransmissionRPCError.rpc("Mock failure — simulated RPC error")
         }
     }
+
+    func fetchSessionTotals() async throws -> SessionTotals {
+        try await Task.sleep(for: simulatedDelay)
+
+        switch scenario {
+        case .failure:
+            throw TransmissionRPCError.rpc("Mock failure — simulated RPC error")
+        case .empty:
+            return SessionTotals(downloadedBytes: 0, uploadedBytes: 0)
+        case .normal, .tooManyTorrents:
+            // A steady pretend trickle tied to wall-clock time, so
+            // consecutive polls show a plausible "since last refresh"
+            // delta instead of a constant that never actually moves.
+            let elapsedSinceEpoch = Date().timeIntervalSince1970
+            let downloaded = Int(elapsedSinceEpoch * 50_000)   // ~50 KB/s pretend average
+            let uploaded = Int(elapsedSinceEpoch * 12_000)     // ~12 KB/s pretend average
+            return SessionTotals(downloadedBytes: downloaded, uploadedBytes: uploaded)
+        }
+    }
 }
 
 #if DEBUG
@@ -61,13 +80,7 @@ extension MockTransmissionClient.Scenario {
     /// save snapshot — the one place that turns "which scenario" into
     /// concrete rows/error text, shared by the host app and the widget.
     func makeSnapshot() async -> WidgetSnapshot {
-        let client = MockTransmissionClient(scenario: self)
-        do {
-            let rows = try await client.fetchTopTorrents(limit: Constants.fetchLimit)
-            return WidgetSnapshot(rows: rows, fetchedAt: Date(), errorMessage: nil)
-        } catch {
-            return WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: error.localizedDescription)
-        }
+        await fetchSnapshot(using: MockTransmissionClient(scenario: self))
     }
 }
 #endif
