@@ -6,6 +6,7 @@ import Foundation
 actor MockTransmissionClient: TransmissionFetching {
     enum Scenario: String {
         case normal    // a realistic mixed set of torrents
+        case tooManyTorrents  // a realistic mixed set of too many torrents to display
         case empty     // nothing active — exercises the "No active torrents" state
         case failure   // simulates an RPC error — exercises the error state
     }
@@ -24,6 +25,8 @@ actor MockTransmissionClient: TransmissionFetching {
         switch scenario {
         case .normal:
             return Array(TorrentInfo.fixtures.prefix(limit))
+        case .tooManyTorrents:
+            return Array(TorrentInfo.fixtures)
         case .empty:
             return []
         case .failure:
@@ -40,7 +43,7 @@ extension MockTransmissionClient.Scenario {
     /// into their own binary, so they always agree without any cross-process
     /// state. Leave `nil` (the default) for live data; this entire file is
     /// compiled out of Release builds by `#if DEBUG`.
-    static let hardcoded: MockTransmissionClient.Scenario? = nil
+    static let hardcoded: MockTransmissionClient.Scenario? = .normal
 
     private static let forcedKey = "debugForcedScenario"
 
