@@ -84,3 +84,10 @@ schemes:
         TransmissionWidgetHost: all
     run:
       config: Debug
+
+  TransmissionWidgetExtension:
+    build:
+      targets:
+        TransmissionWidgetExtension: all
+    run:
+      config: Debug
