@@ -37,7 +37,7 @@ struct SettingsView: View {
                 Button("Save") {
                     settings.save()
                     KeychainHelper.savePassword(password)
-                    reloadWidget()
+                    WidgetReloader.reload()
                     statusMessage = "✓ Saved"
                 }
                 .keyboardShortcut(.defaultAction)
@@ -52,7 +52,7 @@ struct SettingsView: View {
 
         // This button intentionally tests the in-progress form values
         // against the real server, not the saved settings that
-        // makeTransmissionClient() would load — that's the whole point of
+        // TransmissionClientFactory.make() would load — that's the whole point of
         // "Test Connection". The one exception is Xcode's interactive
         // Preview canvas, which shouldn't ever block on a real network call.
         let client: any TransmissionFetching = DevEnvironment.isXcodePreview

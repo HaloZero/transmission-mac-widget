@@ -51,12 +51,12 @@ final class BackgroundRefresher {
         guard MockTransmissionClient.Scenario.forced == nil else { return }
         #endif
 
-        let snapshot = await fetchSnapshot(using: makeTransmissionClient())
+        let snapshot = await SnapshotFetcher.fetch(using: TransmissionClientFactory.make())
         guard snapshot.errorMessage == nil else { return }
         snapshot.save()
 
         if Date().timeIntervalSince(lastReload) >= Constants.widgetReloadInterval {
-            reloadWidget()
+            WidgetReloader.reload()
             lastReload = Date()
         }
     }

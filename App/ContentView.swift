@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    /// Defaults to whatever `makeTransmissionClient()` decides (real client,
+    /// Defaults to whatever `TransmissionClientFactory.make()` decides (real client,
     /// or mock if this is an Xcode Preview / TRANSMISSION_USE_MOCK_DATA is
     /// set). Previews pass an explicit client so each state — normal,
     /// empty, error — can be exercised deliberately rather than left to
@@ -91,19 +91,19 @@ struct ContentView: View {
             let newSnapshot = await forced.makeSnapshot()
             newSnapshot.save()
             snapshot = newSnapshot
-            reloadWidget()
+            WidgetReloader.reload()
             return
         }
         #endif
         isRefreshing = true
         defer { isRefreshing = false }
 
-        let client = self.client ?? makeTransmissionClient()
-        let newSnapshot = await fetchSnapshot(using: client)
+        let client = self.client ?? TransmissionClientFactory.make()
+        let newSnapshot = await SnapshotFetcher.fetch(using: client)
         snapshot = newSnapshot
         if newSnapshot.errorMessage == nil {
             newSnapshot.save()
-            reloadWidget()
+            WidgetReloader.reload()
         }
     }
 }

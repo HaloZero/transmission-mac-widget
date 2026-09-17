@@ -18,16 +18,16 @@ struct RefreshTorrentsIntent: AppIntent {
             // a real fetch that would immediately overwrite it.
             let snapshot = await forced.makeSnapshot()
             snapshot.save()
-            reloadWidget()
+            WidgetReloader.reload()
             return .result()
         }
         #endif
 
-        let snapshot = await fetchSnapshot(using: makeTransmissionClient())
+        let snapshot = await SnapshotFetcher.fetch(using: TransmissionClientFactory.make())
         if snapshot.errorMessage == nil {
             snapshot.save()
         }
-        reloadWidget()
+        WidgetReloader.reload()
         return .result()
     }
 }

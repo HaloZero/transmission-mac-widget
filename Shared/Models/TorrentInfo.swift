@@ -1,37 +1,5 @@
 import Foundation
 
-/// Subset of Transmission's torrent-status values we care about for display.
-/// Full list: https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md
-enum TorrentStatus: Int, Codable {
-    case stopped = 0
-    case checkWaiting = 1
-    case checking = 2
-    case downloadWaiting = 3
-    case downloading = 4
-    case seedWaiting = 5
-    case seeding = 6
-
-    var symbolName: String {
-        switch self {
-        case .stopped: return "pause.circle"
-        case .checkWaiting, .checking: return "magnifyingglass.circle"
-        case .downloadWaiting, .downloading: return "arrow.down.circle.fill"
-        case .seedWaiting, .seeding: return "arrow.up.circle.fill"
-        }
-    }
-
-    var statusLabel: String {
-        switch self {
-        case .stopped: return "Paused"
-        case .checkWaiting, .checking: return "Checking"
-        case .downloadWaiting: return "Waiting"
-        case .downloading: return "Downloading"
-        case .seedWaiting: return "Waiting"
-        case .seeding: return "Seeding"
-        }
-    }
-}
-
 struct TorrentInfo: Codable, Identifiable, Equatable {
     let id: Int
     let name: String
@@ -96,45 +64,5 @@ struct TorrentInfo: Codable, Identifiable, Equatable {
         // (season pack, discography, a magnet link whose metadata hasn't
         // resolved into a single file) — closest visual match is a folder.
         return "folder.fill"
-    }
-}
-
-/// What gets cached into the App Group so the widget has something to show
-/// even before its own network refresh completes, and so the host app's
-/// last-known state matches the widget.
-struct WidgetSnapshot: Codable {
-    var rows: [TorrentInfo]
-    var fetchedAt: Date
-    var errorMessage: String?
-
-    /// All-time cumulative totals as of this snapshot's fetch, from
-    /// Transmission's `session-stats` RPC — used to compute the *Since*
-    /// fields on the next poll. Not something anyone displays directly.
-    var cumulativeDownloaded: Int = 0
-    var cumulativeUploaded: Int = 0
-
-    /// Bytes moved between this snapshot and the previous one. Zero on the
-    /// very first poll ever (no prior total to diff against) rather than
-    /// the misleading "entire all-time total" that a naive diff-from-zero
-    /// would produce.
-    var downloadedSinceLastRefresh: Int = 0
-    var uploadedSinceLastRefresh: Int = 0
-
-    static let empty = WidgetSnapshot(rows: [], fetchedAt: .distantPast, errorMessage: nil)
-
-    private static let key = "widgetSnapshot"
-
-    static func load() -> WidgetSnapshot {
-        guard let data = AppGroup.defaults.data(forKey: key),
-              let decoded = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
-            return .empty
-        }
-        return decoded
-    }
-
-    func save() {
-        if let data = try? JSONEncoder().encode(self) {
-            AppGroup.defaults.set(data, forKey: WidgetSnapshot.key)
-        }
     }
 }

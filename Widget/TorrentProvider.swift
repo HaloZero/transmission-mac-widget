@@ -40,7 +40,7 @@ struct TorrentProvider: TimelineProvider {
                 // Cache is stale — the host app likely isn't running (not a
                 // login item yet, just rebooted, etc.). Fall back to
                 // fetching directly so the widget doesn't stay stuck.
-                let fresh = await fetchSnapshot(using: makeTransmissionClient())
+                let fresh = await SnapshotFetcher.fetch(using: TransmissionClientFactory.make())
                 if fresh.errorMessage == nil {
                     fresh.save()
                 }

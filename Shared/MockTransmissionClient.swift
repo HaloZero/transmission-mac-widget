@@ -80,7 +80,7 @@ extension MockTransmissionClient.Scenario {
     /// save snapshot — the one place that turns "which scenario" into
     /// concrete rows/error text, shared by the host app and the widget.
     func makeSnapshot() async -> WidgetSnapshot {
-        await fetchSnapshot(using: MockTransmissionClient(scenario: self))
+        await SnapshotFetcher.fetch(using: MockTransmissionClient(scenario: self))
     }
 }
 #endif
