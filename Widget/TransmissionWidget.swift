@@ -113,8 +113,9 @@ private struct TorrentProgressCircle: View {
 
             if !isComplete {
                 Text(String(format: "%.0f", clampedPercent * 100))
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.6), radius: 0.5)
             }
         }
         .frame(width: 24, height: 24)

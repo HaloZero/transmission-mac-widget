@@ -43,7 +43,7 @@ extension MockTransmissionClient.Scenario {
     /// into their own binary, so they always agree without any cross-process
     /// state. Leave `nil` (the default) for live data; this entire file is
     /// compiled out of Release builds by `#if DEBUG`.
-    static let hardcoded: MockTransmissionClient.Scenario? = .normal
+    static let hardcoded: MockTransmissionClient.Scenario? = nil
 
     private static let forcedKey = "debugForcedScenario"
 
