@@ -170,9 +170,17 @@ struct TransmissionWidget: Widget {
         StaticConfiguration(kind: kind, provider: TorrentProvider()) { entry in
             TransmissionWidgetView(entry: entry)
         }
-        .configurationDisplayName("Transmission")
+        .configurationDisplayName(configurationDisplayName)
         .description("Shows your most active torrents.")
         .supportedFamilies([.systemMedium, .systemLarge])
+    }
+
+    private var configurationDisplayName: String {
+        #if DEBUG
+        "Transmission (Debug)"
+        #else
+        "Transmission"
+        #endif
     }
 }
 

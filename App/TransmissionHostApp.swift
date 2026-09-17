@@ -10,7 +10,7 @@ struct TransmissionHostApp: App {
     var body: some Scene {
         // A menu-bar-only app avoids a Dock icon / window for something
         // that's mostly here to configure the widget and force refreshes.
-        MenuBarExtra("Transmission", image: "MenuBarIcon") {
+        MenuBarExtra(menuBarTitle, image: "MenuBarIcon") {
             ContentView()
                 .frame(width: 340)
         }
@@ -20,6 +20,14 @@ struct TransmissionHostApp: App {
             SettingsView()
                 .frame(width: 420)
         }
+    }
+
+    private var menuBarTitle: String {
+        #if DEBUG
+        "Transmission (Debug)"
+        #else
+        "Transmission"
+        #endif
     }
 }
 
