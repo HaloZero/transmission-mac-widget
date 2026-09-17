@@ -1,85 +1,21 @@
-# Transmission Widget Host
+# Transmission Mac Widget
 
 A macOS menu-bar app + WidgetKit widget that shows your most active
-Transmission torrents (status, progress, ↓/↑ rate) — up to 3 rows on a
-medium widget, 6 on large — talking directly to Transmission's RPC
-endpoint, the same one `transmission-remote` and the web UI use.
+Transmission torrents (status, progress, ↓/↑ rate), talking directly to
+Transmission's RPC endpoint — the same one `transmission-remote` and the
+web UI use. Row counts per widget size aren't hardcoded here — they live
+in `Shared/Constants.swift`, the single place that controls them.
 
-I can't run Xcode from here, so this is the source plus a `project.yml`
-for XcodeGen to turn into a project — no manual target/capability
-clicking required. Layout matches Xcode's target structure:
-
-```
-TransmissionWidgetHost/
-├── project.yml      # XcodeGen spec — generates the .xcodeproj
-├── Shared/          # added to BOTH targets
-│   ├── AppGroup.swift
-│   ├── Constants.swift
-│   ├── KeychainHelper.swift
-│   ├── MockTransmissionClient.swift
-│   ├── OpenSettingsIntent.swift
-│   ├── TransmissionFetching.swift
-│   ├── TransmissionModels.swift
-│   └── TransmissionRPCClient.swift
-├── App/             # main app target only
-│   ├── TransmissionHostApp.swift
-│   ├── SettingsView.swift
-│   └── ContentView.swift
-└── Widget/          # widget extension target only
-    ├── TorrentEntry.swift
-    ├── TorrentProvider.swift
-    ├── TransmissionWidget.swift
-    └── TransmissionWidgetBundle.swift
-```
-
-## Set up the project with XcodeGen
-
-`project.yml` describes both targets, their bundle IDs, and the App
-Groups + Keychain Sharing entitlements — so the whole project is one
-command instead of clicking through Xcode's capability UI.
-
-1. Install XcodeGen if you don't have it: `brew install xcodegen`
-2. From the `TransmissionWidgetHost/` folder: `xcodegen generate` — this
-   creates `TransmissionWidgetHost.xcodeproj` with both targets wired up,
-   sources attached, `Shared/` files added to both, and entitlements
-   files generated at `App/TransmissionWidgetHost.entitlements` and
-   `Widget/TransmissionWidgetExtension.entitlements`.
-3. Open the generated `.xcodeproj`. Set your Team ID: either fill in
-   `DEVELOPMENT_TEAM` in `project.yml` and re-run `xcodegen generate`, or
-   just set it once per target in Xcode's Signing & Capabilities tab
-   (Xcode will remember it in the `.xcodeproj`, but re-running `xcodegen
-   generate` regenerates the project from `project.yml`, so the
-   `project.yml` edit is the one that sticks).
-4. `KeychainHelper.accessGroup` needs your real Team ID substituted in
-   for `YOUR_TEAM_ID` — open the built app's
-   Signing & Capabilities tab (or check
-   `App/TransmissionWidgetHost.entitlements` after building) to see the
-   resolved `keychain-access-groups` value, then update the Swift
-   constant to match.
-5. Build the `TransmissionWidgetHost` scheme (it embeds the widget
-   extension automatically per `project.yml`'s `dependencies:`), run it
-   once, open **Preferences** from the menu bar item, fill in your Mac
-   mini's Transmission RPC settings, hit **Test Connection**, then
-   **Save**. Then add the widget from the macOS widget gallery — it
-   reads the same App Group settings.
-6. Whenever you add/remove/rename a Swift file under `App/`, `Shared/`,
-   or `Widget/`, just re-run `xcodegen generate` rather than editing
-   the `.xcodeproj` by hand — that's the whole point of driving it from
-   `project.yml`. It's safe to run repeatedly; treat `project.yml` as
-   the source of truth and the `.xcodeproj` as a build artifact (worth
-   adding `*.xcodeproj` to `.gitignore` if you put this in git).
-
-If you'd rather do it by hand in Xcode's UI instead (New Project → App,
-then File → New Target → Widget Extension, adding App Groups/Keychain
-Sharing capabilities manually), that works too — `project.yml` just
-saves you those clicks and makes the setup reproducible.
+The project is described by `project.yml` for XcodeGen; the generated
+`.xcodeproj` is a build artifact and isn't checked into git.
 
 ## Build it and put it on your Mac
 
-`xcodegen generate` only creates the project — you still need to build
-and export an actual `.app` to run day-to-day (a Debug build launched
-via Xcode's Run button quits the moment you stop the Xcode session,
-which defeats the point of a menu-bar widget host). Two ways to do it:
+(Assumes you've already run `xcodegen generate` and opened the resulting
+`.xcodeproj`.) A Debug build launched via Xcode's Run button quits the
+moment you stop the Xcode session, which defeats the point of a menu-bar
+widget host — so for day-to-day use you want an exported `.app` instead.
+Two ways to do it:
 
 ### Option A — Archive & export (recommended for daily use)
 
@@ -102,7 +38,9 @@ which defeats the point of a menu-bar widget host). Two ways to do it:
    once to bypass that; after that it opens normally.
 7. Since it's set as `LSUIElement`, it won't show a Dock icon — look
    for it in the menu bar. You can add it to **System Settings →
-   General → Login Items** to have it launch at login.
+   General → Login Items** to have it launch at login — worth doing,
+   since the host app's own background refresh (see Warnings below)
+   only runs while it's actually open.
 
 ### Option B — Just run it from Xcode while testing
 
@@ -126,155 +64,36 @@ refresh it. A paid Developer ID membership avoids that expiry
 entirely; for a personal home-server tool either is fine, just know
 the free path needs an occasional rebuild.
 
-## Developing without hitting the real server
-
-Previews were mostly broken before this because `ContentView`,
-`SettingsView`'s Test Connection, and the widget's `TimelineProvider`
-all constructed `TransmissionRPCClient` directly and hit the live RPC
-endpoint — which either hangs or errors out in Xcode's Preview canvas
-(a lightweight process that usually lacks this app's entitlements) and
-is just annoying during normal development when you're off the
-tailnet. There was also a real crash bug: `AppGroup.defaults` used to
-`fatalError()` if the App Group suite wasn't available, which is
-exactly the situation Previews are usually in before entitlements are
-fully wired up.
-
-Two fixes, both in `Shared/`:
-
-- **`AppGroup.defaults` no longer crashes** — it falls back to
-  `UserDefaults.standard` with a console warning instead of a
-  `fatalError`, so any process without the App Group entitlement
-  (Previews, or before you've run `xcodegen generate` + set a Team)
-  degrades gracefully instead of taking down the canvas.
-- **`TransmissionFetching` protocol + `MockTransmissionClient`** — the
-  real client and a fixture-backed mock both conform to the same
-  `func fetchTopTorrents(limit:) async throws -> [TorrentInfo]`, and
-  `makeTransmissionClient()` in `TransmissionFetching.swift` picks
-  between them:
-  - **Automatically mock** whenever `XCODE_RUNNING_FOR_PREVIEWS=1` is
-    set — which Xcode sets for you in every Preview, no configuration
-    needed.
-  - **Mock on demand** when you set `TRANSMISSION_USE_MOCK_DATA=1` as
-    an environment variable on the scheme (Product → Scheme → Edit
-    Scheme → Run → Arguments → Environment Variables) — useful for
-    running the actual app or widget locally without the Mac mini
-    reachable.
-  - Pair either with `TRANSMISSION_MOCK_SCENARIO=empty` or `=failure`
-    to deliberately preview the "no active torrents" and error states
-    instead of the happy path.
-
-`MockTransmissionClient` never touches the network, Keychain, or App
-Group — it just sleeps briefly (to simulate latency) and returns
-`TorrentInfo.fixtures`, five torrents covering every status the UI
-branches on (downloading, seeding, checking, stopped).
-
-`ContentView` also takes an optional `client:` parameter so its
-Previews can pin down a scenario explicitly rather than relying only
-on auto-detection:
-
-```swift
-#Preview("Empty") {
-    ContentView(client: MockTransmissionClient(scenario: .empty))
-}
-```
-
-The widget's Previews do the same by passing fixture data straight
-into a `TorrentEntry` (see the three `#Preview` blocks at the bottom of
-`Widget/TransmissionWidget.swift`) — normal, empty, and error variants,
-all viewable in Xcode's canvas without any network access at all.
-
-`SettingsView`'s **Test Connection** button is the one place that
-deliberately still hits the real server when run normally — it exists
-specifically to verify whatever host/port/credentials you just typed,
-so mocking it there would defeat the point. It only falls back to the
-mock automatically inside Xcode's interactive Preview canvas, so
-tapping it there can't hang on a network call.
-
-### Forcing a specific scenario on a running build (Debug only)
-
-Previews are great for quick iteration, but sometimes you want to see
-a scenario in the *actual* menu bar app and the *actual* installed
-widget — not just Xcode's canvas. `MockTransmissionClient.Scenario`
-(in `MockTransmissionClient.swift`, entirely wrapped in `#if DEBUG`)
-gives you two ways to do that, both compiled out of Release builds:
-
-- **Menu bar picker** — the running app's dropdown has a **Debug: Load
-  Scenario** menu (Normal / Empty / Error / Live Data). Picking one
-  seeds the shared `WidgetSnapshot` and persists the choice in the App
-  Group so the real widget extension picks it up too, regardless of
-  which process set it.
-- **Hardcoded constant** — set `MockTransmissionClient.Scenario.hardcoded`
-  directly (e.g. to `.empty`) and rebuild. No scheme or
-  environment-variable configuration needed: the host app and the
-  widget extension both compile the same literal into their own
-  binary, so they can't disagree. This always wins over the menu
-  picker — remember to set it back to `nil` before you want live data
-  again, or the menu will appear to do nothing.
-
-Once a scenario is forced, `TorrentProvider.getTimeline` skips the real
-(or mock) network fetch entirely and just re-serves whatever's forced,
-so it won't get raced and overwritten by a live refresh.
-
-**A macOS-beta caveat:** at the time of writing (macOS 27.0 / Xcode 27
-beta), Xcode's WidgetKit Simulator harness is broken for macOS widgets
-— both the canvas preview ("This platform does not support previewing
-widgets") and the Simulator app itself, which reliably crashes on quit
-(`EXC_BAD_ACCESS` inside its own `NSHostingView` teardown — a bug in
-Apple's first-party binary, not this project). If you hit either, skip
-the Simulator entirely: run the `TransmissionWidgetHost` scheme, add
-the widget to Notification Center once, then drive it with the debug
-menu above — the real widget lifecycle works fine even when the
-Simulator harness doesn't.
-
 ## Transmission-side settings
 
-On m1mediaserver's Transmission (`settings.json` or the daemon's web UI
+In Transmission's settings (`settings.json` or the daemon's web UI
 preferences), you'll want:
 
 - `rpc-enabled: true`
 - `rpc-port`, `rpc-url` matching what you enter in the app (defaults
   here assume port `9091`, path `/transmission/rpc`)
-- If you connect over Tailscale (`nutria-typhon.ts.net`) rather than
-  local Bonjour, set `rpc-whitelist-enabled: false` or add your Mac's
-  Tailscale IP to `rpc-whitelist`, and set `rpc-host-whitelist` to
-  include the tailnet hostname — this is the same host-header issue
-  your Alfred `add_torrent.py` workflow already had to work around.
+- If Transmission is reachable only from a different host/network than
+  the one this app runs on, make sure `rpc-whitelist-enabled` /
+  `rpc-whitelist` / `rpc-host-whitelist` are configured to allow
+  connections from wherever this Mac actually connects from.
 - Basic auth (`rpc-authentication-required`, `rpc-username`,
-  `rpc-password`) is optional but recommended since this'll be reachable
-  over the tailnet; the app's Settings screen has fields for both.
+  `rpc-password`) is optional but recommended if the daemon is
+  reachable beyond localhost; the app's Settings screen has fields for
+  both.
 
-## Notes on the design
+## Warnings
 
-- **Widget does its own networking.** `TorrentProvider.getTimeline`
-  (in `Widget/TorrentProvider.swift`) calls Transmission RPC directly
-  on each refresh (every 5 minutes by default — see `nextRefresh`), so
-  the widget stays current even if the menu bar app isn't running. It
-  also caches the last good result to the App Group so a temporary
-  failure (Mac mini asleep, VPN down) shows stale-but-present data
-  instead of a blank widget.
-- **Menu bar app is for configuration + on-demand refresh.** It can
-  force an immediate widget reload via
-  `WidgetCenter.reloadAllTimelines()` after you change settings.
-- **Row count** lives in one place: `Constants.maxRows(for:)` in
-  `Shared/Constants.swift` — currently 3 on `.systemMedium`, 6 on
-  `.systemLarge` (`.systemSmall` isn't offered at all; the redesigned
-  row needs more horizontal room than it can give). `Constants.fetchLimit`
-  is derived from the largest family's row count, so bumping a limit
-  only requires touching this one file.
-- Each row shows a content-type icon inferred from the torrent's name
-  (disk image, archive, video, audio, folder as the fallback), a
-  filled progress circle (blue while in progress, green once complete,
-  with a percentage label only while incomplete), and a second line
-  combining status (Downloading/Seeding/Paused/Checking/Waiting),
-  percent, and both rates.
-- Sorting picks the torrents with the most combined ↓/↑ throughput
-  first, so the visible rows are whatever's actually active rather
-  than an arbitrary alphabetical slice.
-
-## Things you may want to change
-
-- Refresh cadence (`nextRefresh`) — widgets have a limited daily
-  refresh budget from the system, so don't go much below 5 minutes.
+- **Refresh cadence has two different knobs, both in
+  `Shared/Constants.swift`.** `hostPollInterval` controls how often the
+  host app polls Transmission and refreshes the shared cache while
+  it's running — it's a plain background loop, not a widget reload, so
+  it isn't subject to WidgetKit's system reload budget. `widgetReloadInterval`
+  (15 minutes) controls how often the host app actually asks WidgetKit
+  to redraw the widget — keep this modest, since that budget applies
+  no matter who triggers the reload, and calls beyond it are silently
+  dropped rather than queued. The widget's own `TorrentProvider` only
+  falls back to fetching directly if the cache is stale beyond
+  `cacheStalenessThreshold`, i.e. the host app hasn't been running.
 - Sort order / row count could easily become a `WidgetConfigurationIntent`
   if you want per-widget-instance settings (e.g. one small widget for
   downloads, one for seeding) instead of the shared global settings used
@@ -282,5 +101,4 @@ preferences), you'll want:
 - If you'd rather not deal with Keychain access groups at all, you can
   drop `KeychainHelper` and store the password directly in the App
   Group `UserDefaults` alongside the rest of `TransmissionSettings` —
-  less secure, but one less capability to configure for a
-  Tailscale-only home setup.
+  less secure, but one less capability to configure.
