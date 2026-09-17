@@ -53,12 +53,11 @@ struct ContentView: View {
             #if DEBUG
             Divider()
             Menu("Debug: Load Scenario") {
-                Button("Normal") { loadDebugScenario(.normal) }
-                Button("Empty") { loadDebugScenario(.empty) }
-                Button("Error") { loadDebugScenario(.failure) }
+                Button("Normal") { setDebugScenario(.normal) }
+                Button("Empty") { setDebugScenario(.empty) }
+                Button("Error") { setDebugScenario(.failure) }
                 Divider()
-                Button("Resume Live Data") { resumeLiveData() }
-                    .disabled(!DebugScenarioLock.isLocked)
+                Button("Live Data") { setDebugScenario(nil) }
             }
             .menuStyle(.borderlessButton)
             #endif
@@ -71,36 +70,24 @@ struct ContentView: View {
     }
 
     #if DEBUG
-    /// Seeds the App Group with a fixed scenario and forces a widget reload,
-    /// so WidgetKit Simulator's Snapshot/Timeline controls exercise the same
-    /// states as the `MockTransmissionClient` previews without needing a
-    /// real (or mock) network round trip. Debug-only: never compiled into
-    /// the Release build a user would install.
-    private func loadDebugScenario(_ scenario: MockTransmissionClient.Scenario) {
-        let newSnapshot: WidgetSnapshot
-        switch scenario {
-        case .normal:
-            newSnapshot = WidgetSnapshot(rows: TorrentInfo.fixtures, fetchedAt: Date(), errorMessage: nil)
-        case .empty:
-            newSnapshot = WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: nil)
-        case .failure:
-            newSnapshot = WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: "Mock failure — simulated RPC error")
-        }
-        DebugScenarioLock.lock()
-        newSnapshot.save()
-        snapshot = newSnapshot
-        reloadWidget()
-    }
-
-    private func resumeLiveData() {
-        DebugScenarioLock.unlock()
+    /// Sets (or clears) the forced scenario and immediately refreshes so the
+    /// change is visible right away — see `MockTransmissionClient.Scenario`
+    /// for where "forced" is actually resolved and consumed.
+    private func setDebugScenario(_ scenario: MockTransmissionClient.Scenario?) {
+        MockTransmissionClient.Scenario.forced = scenario
         Task { await refresh() }
     }
     #endif
 
     private func refresh() async {
         #if DEBUG
-        guard !DebugScenarioLock.isLocked else { return }
+        if client == nil, let forced = MockTransmissionClient.Scenario.forced {
+            let newSnapshot = await forced.makeSnapshot()
+            newSnapshot.save()
+            snapshot = newSnapshot
+            reloadWidget()
+            return
+        }
         #endif
         isRefreshing = true
         defer { isRefreshing = false }
