@@ -49,6 +49,16 @@ struct ContentView: View {
                 Text("Preferences…")
             }
             .buttonStyle(.plain)
+
+            #if DEBUG
+            Divider()
+            Menu("Debug: Load Scenario") {
+                Button("Normal") { loadDebugScenario(.normal) }
+                Button("Empty") { loadDebugScenario(.empty) }
+                Button("Error") { loadDebugScenario(.failure) }
+            }
+            .menuStyle(.borderlessButton)
+            #endif
         }
         .padding(12)
         .task { await refresh() }
@@ -56,6 +66,28 @@ struct ContentView: View {
             openSettings()
         }
     }
+
+    #if DEBUG
+    /// Seeds the App Group with a fixed scenario and forces a widget reload,
+    /// so WidgetKit Simulator's Snapshot/Timeline controls exercise the same
+    /// states as the `MockTransmissionClient` previews without needing a
+    /// real (or mock) network round trip. Debug-only: never compiled into
+    /// the Release build a user would install.
+    private func loadDebugScenario(_ scenario: MockTransmissionClient.Scenario) {
+        let newSnapshot: WidgetSnapshot
+        switch scenario {
+        case .normal:
+            newSnapshot = WidgetSnapshot(rows: TorrentInfo.fixtures, fetchedAt: Date(), errorMessage: nil)
+        case .empty:
+            newSnapshot = WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: nil)
+        case .failure:
+            newSnapshot = WidgetSnapshot(rows: [], fetchedAt: Date(), errorMessage: "Mock failure — simulated RPC error")
+        }
+        newSnapshot.save()
+        snapshot = newSnapshot
+        reloadWidget()
+    }
+    #endif
 
     private func refresh() async {
         isRefreshing = true
