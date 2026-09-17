@@ -10,7 +10,6 @@ struct TransmissionHostApp: App {
     var body: some Scene {
         // A menu-bar-only app avoids a Dock icon / window for something
         // that's mostly here to configure the widget and force refreshes.
-        // Set LSUIElement = YES in Info.plist to hide the Dock icon.
         MenuBarExtra("Transmission", image: "MenuBarIcon") {
             ContentView()
                 .frame(width: 340)
@@ -25,11 +24,7 @@ struct TransmissionHostApp: App {
 }
 
 /// Keeps the shared cache fresh while the host app is running, independent
-/// of whether the menu bar dropdown is open. This is a plain background
-/// loop, not a widget reload, so it isn't subject to WidgetKit's daily
-/// reload budget and can poll far more often than we'd ever want to call
-/// `reloadWidget()` — see `Constants.hostPollInterval` vs
-/// `Constants.widgetReloadInterval`.
+/// of whether the menu bar dropdown is open.
 @MainActor
 final class BackgroundRefresher {
     static let shared = BackgroundRefresher()

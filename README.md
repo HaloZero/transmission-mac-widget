@@ -83,17 +83,20 @@ preferences), you'll want:
 
 ## Warnings
 
-- **Refresh cadence has two different knobs, both in
-  `Shared/Constants.swift`.** `hostPollInterval` controls how often the
-  host app polls Transmission and refreshes the shared cache while
-  it's running — it's a plain background loop, not a widget reload, so
-  it isn't subject to WidgetKit's system reload budget. `widgetReloadInterval`
-  (15 minutes) controls how often the host app actually asks WidgetKit
-  to redraw the widget — keep this modest, since that budget applies
-  no matter who triggers the reload, and calls beyond it are silently
-  dropped rather than queued. The widget's own `TorrentProvider` only
-  falls back to fetching directly if the cache is stale beyond
-  `cacheStalenessThreshold`, i.e. the host app hasn't been running.
+- **Refresh cadence has two knobs, both in `Shared/Constants.swift`.**
+  `hostPollInterval` is how often the host app refreshes the
+  shared cache, and also what the widget itself requests via its
+  timeline policy — free to ask for, since a cache hit costs nothing;
+  WidgetKit's own budget/visibility throttling decides the real-world
+  cadence. `widgetReloadInterval` is a coarser backstop the
+  host uses to explicitly poke WidgetKit in case the widget isn't
+  visible enough for its own schedule to be honored.
+  `cacheStalenessThreshold` (10x `hostPollInterval`) is when the
+  widget gives up on the cache and fetches directly itself.
+- Widget-animation tricks (private `_ClockHandRotationEffect`, or
+  timer+font-ligature flicker) don't fetch new data — they just make
+  stale data look busier. The refresh button forces an immediate
+  check, but it still shares WidgetKit's system-wide reload budget.
 - Sort order / row count could easily become a `WidgetConfigurationIntent`
   if you want per-widget-instance settings (e.g. one small widget for
   downloads, one for seeding) instead of the shared global settings used

@@ -47,8 +47,17 @@ struct TorrentProvider: TimelineProvider {
                 entry = TorrentEntry(date: fresh.fetchedAt, rows: fresh.rows, errorMessage: fresh.errorMessage)
             }
 
-            let nextRefresh = Date().addingTimeInterval(Constants.widgetReloadInterval)
-            completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
+            // Ask WidgetKit to check back as often as new data could
+            // possibly exist (hostPollInterval), not our own conservative
+            // widgetReloadInterval guess — the cache-hit path above is a
+            // free local read, so there's no cost to asking more often and
+            // letting the system's own budget/visibility throttling decide
+            // the real-world cadence, instead of us pre-emptively rationing
+            // to a fixed slow interval. Asking for shorter than
+            // hostPollInterval would just re-serve the same cached data,
+            // since that's how often it can actually change.
+            let nextCheck = Date().addingTimeInterval(Constants.hostPollInterval)
+            completion(Timeline(entries: [entry], policy: .after(nextCheck)))
         }
     }
 }

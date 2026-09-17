@@ -37,7 +37,7 @@ struct TransmissionSettings: Codable {
     var username: String
 
     static let `default` = TransmissionSettings(
-        host: "m1mediaserver.local",
+        host: "192.168.1.1",
         port: 9091,
         useHTTPS: false,
         rpcPath: "/transmission/rpc",
