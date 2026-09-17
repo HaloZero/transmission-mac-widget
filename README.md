@@ -1,9 +1,9 @@
 # Transmission Widget Host
 
-A macOS menu-bar app + WidgetKit widget that shows up to 4 rows of your
-most active Transmission torrents (progress, ↓/↑ rate), talking directly
-to Transmission's RPC endpoint — the same one `transmission-remote` and
-the web UI use.
+A macOS menu-bar app + WidgetKit widget that shows your most active
+Transmission torrents (status, progress, ↓/↑ rate) — up to 3 rows on a
+medium widget, 6 on large — talking directly to Transmission's RPC
+endpoint, the same one `transmission-remote` and the web UI use.
 
 I can't run Xcode from here, so this is the source plus a `project.yml`
 for XcodeGen to turn into a project — no manual target/capability
@@ -14,8 +14,10 @@ TransmissionWidgetHost/
 ├── project.yml      # XcodeGen spec — generates the .xcodeproj
 ├── Shared/          # added to BOTH targets
 │   ├── AppGroup.swift
+│   ├── Constants.swift
 │   ├── KeychainHelper.swift
 │   ├── MockTransmissionClient.swift
+│   ├── OpenSettingsIntent.swift
 │   ├── TransmissionFetching.swift
 │   ├── TransmissionModels.swift
 │   └── TransmissionRPCClient.swift
@@ -24,6 +26,8 @@ TransmissionWidgetHost/
 │   ├── SettingsView.swift
 │   └── ContentView.swift
 └── Widget/          # widget extension target only
+    ├── TorrentEntry.swift
+    ├── TorrentProvider.swift
     ├── TransmissionWidget.swift
     └── TransmissionWidgetBundle.swift
 ```
@@ -122,35 +126,6 @@ refresh it. A paid Developer ID membership avoids that expiry
 entirely; for a personal home-server tool either is fine, just know
 the free path needs an occasional rebuild.
 
-## Adding the real Transmission icon
-
-The widget header uses `TransmissionLogoView`, which looks for an image
-named **TransmissionLogo** in `Widget/Assets.xcassets` and falls back
-to an SF Symbol if that asset doesn't exist yet — so the widget looks
-fine out of the box, but you can drop the real icon in:
-
-1. Get the icon file itself — either pull it out of your own copy of
-   Transmission.app (right-click → Show Package Contents →
-   `Contents/Resources/`, look for the `.icns`), or grab it from the
-   `macosx/` folder of the official
-   [transmission/transmission](https://github.com/transmission/transmission)
-   repo (dual MIT/GPL licensed). If you only have an `.icns`, unpack it
-   to PNGs with `iconutil -c iconset AppIcon.icns` and pick whichever
-   size you want (a 64–128px one is plenty for a widget row icon).
-2. In Xcode, right-click `Widget/` → **New File → Asset Catalog**,
-   name it `Assets.xcassets`.
-3. Inside it, **New Image Set**, name it exactly `TransmissionLogo`,
-   and drag the PNG in (1x is enough; add 2x/3x if you have them).
-4. Add `Widget/Assets.xcassets` to the **TransmissionWidgetExtension**
-   target's membership (File Inspector, right panel) if Xcode doesn't
-   do it automatically.
-5. Re-run `xcodegen generate` if you're regenerating the project from
-   scratch afterward — asset catalogs under a target's `sources:` path
-   are picked up automatically, no `project.yml` change needed since
-   `Widget/` is already listed as a source path for that target.
-6. Build again — the widget will now show the real icon instead of the
-   SF Symbol fallback.
-
 ## Developing without hitting the real server
 
 Previews were mostly broken before this because `ContentView`,
@@ -215,6 +190,42 @@ so mocking it there would defeat the point. It only falls back to the
 mock automatically inside Xcode's interactive Preview canvas, so
 tapping it there can't hang on a network call.
 
+### Forcing a specific scenario on a running build (Debug only)
+
+Previews are great for quick iteration, but sometimes you want to see
+a scenario in the *actual* menu bar app and the *actual* installed
+widget — not just Xcode's canvas. `MockTransmissionClient.Scenario`
+(in `MockTransmissionClient.swift`, entirely wrapped in `#if DEBUG`)
+gives you two ways to do that, both compiled out of Release builds:
+
+- **Menu bar picker** — the running app's dropdown has a **Debug: Load
+  Scenario** menu (Normal / Empty / Error / Live Data). Picking one
+  seeds the shared `WidgetSnapshot` and persists the choice in the App
+  Group so the real widget extension picks it up too, regardless of
+  which process set it.
+- **Hardcoded constant** — set `MockTransmissionClient.Scenario.hardcoded`
+  directly (e.g. to `.empty`) and rebuild. No scheme or
+  environment-variable configuration needed: the host app and the
+  widget extension both compile the same literal into their own
+  binary, so they can't disagree. This always wins over the menu
+  picker — remember to set it back to `nil` before you want live data
+  again, or the menu will appear to do nothing.
+
+Once a scenario is forced, `TorrentProvider.getTimeline` skips the real
+(or mock) network fetch entirely and just re-serves whatever's forced,
+so it won't get raced and overwritten by a live refresh.
+
+**A macOS-beta caveat:** at the time of writing (macOS 27.0 / Xcode 27
+beta), Xcode's WidgetKit Simulator harness is broken for macOS widgets
+— both the canvas preview ("This platform does not support previewing
+widgets") and the Simulator app itself, which reliably crashes on quit
+(`EXC_BAD_ACCESS` inside its own `NSHostingView` teardown — a bug in
+Apple's first-party binary, not this project). If you hit either, skip
+the Simulator entirely: run the `TransmissionWidgetHost` scheme, add
+the widget to Notification Center once, then drive it with the debug
+menu above — the real widget lifecycle works fine even when the
+Simulator harness doesn't.
+
 ## Transmission-side settings
 
 On m1mediaserver's Transmission (`settings.json` or the daemon's web UI
@@ -234,20 +245,30 @@ preferences), you'll want:
 
 ## Notes on the design
 
-- **Widget does its own networking.** The `TimelineProvider` calls
-  Transmission RPC directly on each refresh (every 5 minutes by
-  default — see `nextRefresh` in `TransmissionWidget.swift`), so the
-  widget stays current even if the menu bar app isn't running. It also
-  caches the last good result to the App Group so a temporary failure
-  (Mac mini asleep, VPN down) shows stale-but-present data instead of a
-  blank widget.
-- **Menu bar app is for configuration + on-demand refresh.** It shows
-  the same 4 rows in a popover and can force an immediate widget reload
-  via `WidgetCenter.reloadAllTimelines()` after you change settings.
-- **Row count**: capped at 4 as requested — `.systemSmall` shows 2 (not
-  enough room for 4), `.systemMedium`/`.systemLarge` show up to 4.
+- **Widget does its own networking.** `TorrentProvider.getTimeline`
+  (in `Widget/TorrentProvider.swift`) calls Transmission RPC directly
+  on each refresh (every 5 minutes by default — see `nextRefresh`), so
+  the widget stays current even if the menu bar app isn't running. It
+  also caches the last good result to the App Group so a temporary
+  failure (Mac mini asleep, VPN down) shows stale-but-present data
+  instead of a blank widget.
+- **Menu bar app is for configuration + on-demand refresh.** It can
+  force an immediate widget reload via
+  `WidgetCenter.reloadAllTimelines()` after you change settings.
+- **Row count** lives in one place: `Constants.maxRows(for:)` in
+  `Shared/Constants.swift` — currently 3 on `.systemMedium`, 6 on
+  `.systemLarge` (`.systemSmall` isn't offered at all; the redesigned
+  row needs more horizontal room than it can give). `Constants.fetchLimit`
+  is derived from the largest family's row count, so bumping a limit
+  only requires touching this one file.
+- Each row shows a content-type icon inferred from the torrent's name
+  (disk image, archive, video, audio, folder as the fallback), a
+  filled progress circle (blue while in progress, green once complete,
+  with a percentage label only while incomplete), and a second line
+  combining status (Downloading/Seeding/Paused/Checking/Waiting),
+  percent, and both rates.
 - Sorting picks the torrents with the most combined ↓/↑ throughput
-  first, so the 4 visible rows are whatever's actually active rather
+  first, so the visible rows are whatever's actually active rather
   than an arbitrary alphabetical slice.
 
 ## Things you may want to change
