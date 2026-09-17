@@ -5,63 +5,51 @@ Transmission torrents (status, progress, ↓/↑ rate), talking directly to
 Transmission's RPC endpoint — the same one `transmission-remote` and the
 web UI use.
 
+| `.systemMedium` | `.systemLarge` |
+| --- | --- |
+| ![Medium widget](Screenshots/widget-medium.png) | ![Large widget](Screenshots/widget-large.png) |
+
+*(Rendered with fixture data via `make screenshots` — see
+`Tools/ScreenshotRenderer`. It uses `ImageRenderer` to draw the widget
+off-screen, so there's no live widget host or screen-recording permission
+involved; run it again after a UI change to refresh these.)*
+
 The project is described by `project.yml` for XcodeGen; the generated
 `.xcodeproj` is a build artifact and isn't checked into git.
 
+## Before you build: set up your own team
+
+`project.yml`'s `DEVELOPMENT_TEAM` is the original author's Apple
+Developer Team ID — it's checked in so the project builds out of the box
+for them, but it won't sign anything for you. Replace it with your own
+Team ID (Xcode → Settings → Accounts → your Apple ID → Team, or
+developer.apple.com → Membership) before building, then run
+`make generate` (or `xcodegen generate`) to regenerate the project.
+A free personal team works fine for local use — see Warnings below for
+the one caveat that comes with it.
+
 ## Build it and put it on your Mac
 
-(Assumes you've already run `xcodegen generate` and opened the resulting
-`.xcodeproj`.) A Debug build launched via Xcode's Run button quits the
-moment you stop the Xcode session, which defeats the point of a menu-bar
-widget host — so for day-to-day use you want an exported `.app` instead.
-Two ways to do it:
+A Debug build launched via Xcode's Run button quits the moment you stop
+the Xcode session, which defeats the point of a menu-bar widget host — so
+you want an exported, signed `.app`. The `Makefile` automates the
+archive/export flow that would otherwise mean clicking through Xcode's
+Organizer by hand:
 
-### Option A — Archive & export (recommended for daily use)
+- `make app` — archives (Release) and exports a signed
+  `TransmissionWidgetHost.app` to `build/export/`.
+- `make install` — does the above, then copies the result into
+  `/Applications`.
+- `make screenshots` — regenerates the widget images above.
+- `make clean` — removes build artifacts.
 
-1. In Xcode, select the **TransmissionWidgetHost** scheme, and set the
-   destination to **My Mac**.
-2. Make sure a **Team** is selected for both targets (Signing &
-   Capabilities tab) — your personal Apple ID team is fine, no paid
-   Developer Program membership required for local use.
-3. **Product → Archive.** This always builds Release, which is what
-   you want (Debug widget extensions are less reliable about
-   background refresh).
-4. When the Organizer window opens, select the archive → **Distribute
-   App → Copy App** → choose a folder to export to. This produces
-   `TransmissionWidgetHost.app` signed with your local development
-   certificate — no App Store, no notarization needed.
-5. Drag `TransmissionWidgetHost.app` into `/Applications` (or
-   `~/Applications`).
-6. First launch will likely get Gatekeeper's "unidentified developer"
-   warning since it's not notarized — right-click the app → **Open**
-   once to bypass that; after that it opens normally.
-7. Since it's set as `LSUIElement`, it won't show a Dock icon — look
-   for it in the menu bar. You can add it to **System Settings →
-   General → Login Items** to have it launch at login — worth doing,
-   since the host app's own background refresh (see Warnings below)
-   only runs while it's actually open.
-
-### Option B — Just run it from Xcode while testing
-
-`Cmd+R` builds and runs immediately, which is the fastest loop while
-you're still tweaking `SettingsView`/`ContentView`/the widget UI. The
-app and its embedded widget extension get installed into
-`~/Library/Developer/Xcode/DerivedData/.../Build/Products/Debug/`, and
-macOS registers the widget with the widget gallery as long as that
-build exists on disk — but the app itself quits when you stop the
-Xcode session (Cmd+.), which stops the widget updating too. Once
-you're happy with it, switch to Option A for something that survives
-Xcode closing.
-
-### A note on the free-Apple-ID caveat
-
-If you're signing with a free personal team (no $99/year Developer
-Program), the provisioning profile Xcode generates for the App Group +
-Keychain Sharing entitlements expires after about a week — you'll need
-to re-open the project and re-run Archive/Copy App periodically to
-refresh it. A paid Developer ID membership avoids that expiry
-entirely; for a personal home-server tool either is fine, just know
-the free path needs an occasional rebuild.
+First launch will likely get Gatekeeper's "unidentified developer"
+warning since it's not notarized — right-click the app → **Open** once to
+bypass that; after that it opens normally. Since it's set as
+`LSUIElement`, it won't show a Dock icon — look for it in the menu bar.
+Add it to **System Settings → General → Login Items** to have it launch
+at login — worth doing, since the host app's own background refresh (see
+Warnings below) only runs while it's actually open.
 
 ## Transmission-side settings
 
@@ -82,6 +70,13 @@ preferences), you'll want:
 
 ## Warnings
 
+- **Free Apple ID signing expires weekly.** If you're signing with a free
+  personal team (no $99/year Developer Program), the provisioning profile
+  Xcode generates for the App Group + Keychain Sharing entitlements
+  expires after about a week — you'll need to `make app` (or `install`)
+  again periodically to refresh it. A paid Developer ID membership avoids
+  this entirely; for a personal home-server tool either is fine, just
+  know the free path needs an occasional rebuild.
 - **Refresh cadence has two knobs, both in `Shared/Constants.swift`.**
   `hostPollInterval` is how often the host app refreshes the
   shared cache, and also what the widget itself requests via its
@@ -90,8 +85,8 @@ preferences), you'll want:
   cadence. `widgetReloadInterval` is a coarser backstop the
   host uses to explicitly poke WidgetKit in case the widget isn't
   visible enough for its own schedule to be honored.
-  `cacheStalenessThreshold` (10x `hostPollInterval`) is when the
-  widget gives up on the cache and fetches directly itself.
+  `cacheStalenessThreshold` is when the widget gives up on the cache
+  and fetches directly itself.
 - Widget-animation tricks (private `_ClockHandRotationEffect`, or
   timer+font-ligature flicker) don't fetch new data — they just make
   stale data look busier. The refresh button forces an immediate

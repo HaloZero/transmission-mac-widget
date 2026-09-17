@@ -77,6 +77,19 @@ targets:
         keychain-access-groups:
           - $(AppIdentifierPrefix)com.halozero.transmissionwidget
 
+  ScreenshotRenderer:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Shared
+      - path: Widget/TransmissionWidgetView.swift
+      - path: Widget/TorrentEntry.swift
+      - path: Widget/TorrentProvider.swift
+      - path: Tools/ScreenshotRenderer
+    settings:
+      base:
+        CODE_SIGNING_ALLOWED: "NO"
+
 schemes:
   TransmissionWidgetHost:
     build:
@@ -89,5 +102,12 @@ schemes:
     build:
       targets:
         TransmissionWidgetExtension: all
+    run:
+      config: Debug
+
+  ScreenshotRenderer:
+    build:
+      targets:
+        ScreenshotRenderer: all
     run:
       config: Debug

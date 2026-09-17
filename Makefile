@@ -12,7 +12,10 @@ APP_PATH := $(EXPORT_PATH)/$(SCHEME).app
 # one checked into this repo.
 TEAM_ID := $(shell grep 'DEVELOPMENT_TEAM' project.yml | sed -E 's/[^"]*"([^"]+)".*/\1/')
 
-.PHONY: generate archive export app install clean
+SCREENSHOT_DERIVED_DATA := $(BUILD_DIR)/ScreenshotRendererDerivedData
+SCREENSHOTS_DIR := Screenshots
+
+.PHONY: generate archive export app install clean screenshots
 
 generate:
 	xcodegen generate
@@ -57,3 +60,15 @@ install: app
 clean:
 	rm -rf $(BUILD_DIR)
 	xcodebuild clean -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION)
+
+# Renders TransmissionWidgetView off-screen with fixture data (no live
+# widget host, no screen recording permission needed) and writes the result
+# to Screenshots/. Run after a UI change to refresh the README's images.
+screenshots: generate
+	xcodebuild build \
+		-project $(PROJECT) \
+		-scheme ScreenshotRenderer \
+		-configuration Debug \
+		-destination "generic/platform=macOS" \
+		-derivedDataPath $(SCREENSHOT_DERIVED_DATA)
+	$(SCREENSHOT_DERIVED_DATA)/Build/Products/Debug/ScreenshotRenderer $(SCREENSHOTS_DIR)

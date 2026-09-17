@@ -6,20 +6,29 @@ import AppKit
 #endif
 
 struct TransmissionWidgetView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
     let entry: TorrentEntry
 
+    /// Overrides the environment-provided family — WidgetKit's own
+    /// \.widgetFamily is read-only from outside, so a standalone renderer
+    /// (see Tools/ScreenshotRenderer) can't set it via `.environment()`.
+    /// `nil` (the default) means "use whatever WidgetKit actually gave
+    /// us," which is always the case for the real, hosted widget.
+    var family: WidgetFamily?
+
+    private var resolvedFamily: WidgetFamily { family ?? environmentFamily }
+
     private var maxRows: Int {
-        Constants.maxRows(for: family)
+        Constants.maxRows(for: resolvedFamily)
     }
 
     var body: some View {
         VStack(spacing: 4) {
             Group {
                 if let errorMessage = entry.errorMessage, entry.rows.isEmpty {
-                    WidgetEmptyStateView(family: family, systemImage: "exclamationmark.triangle", message: errorMessage, isError: true)
+                    WidgetEmptyStateView(family: resolvedFamily, systemImage: "exclamationmark.triangle", message: errorMessage, isError: true)
                 } else if entry.rows.isEmpty {
-                    WidgetEmptyStateView(family: family, systemImage: "tray", message: "No active torrents", isError: false)
+                    WidgetEmptyStateView(family: resolvedFamily, systemImage: "tray", message: "No active torrents", isError: false)
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(entry.rows.prefix(maxRows)) { row in
