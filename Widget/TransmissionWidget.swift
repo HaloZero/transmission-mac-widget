@@ -10,10 +10,7 @@ struct TransmissionWidgetView: View {
     let entry: TorrentEntry
 
     private var maxRows: Int {
-        switch family {
-        case .systemMedium: return 3
-        default: return 6
-        }
+        Constants.maxRows(for: family)
     }
 
     var body: some View {
