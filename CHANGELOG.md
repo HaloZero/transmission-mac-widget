@@ -8,6 +8,41 @@ project doesn't cut versioned releases yet, so entries are grouped under
 ## [Unreleased]
 
 ### Added
+- `SessionTotals` and `WidgetSnapshot.downloadedSinceLastRefresh`/
+  `uploadedSinceLastRefresh`, computed from Transmission's `session-stats`
+  RPC (`cumulative-stats`, not `current-stats`, so a daemon restart can't
+  corrupt the diff) and diffed against the previous poll. Shown in the
+  host app under "Last updated."
+- `fetchSnapshot(using:)` — a single shared fetch/diff helper used by the
+  host app's manual refresh, its background poller, and the widget's
+  fallback fetch, so the delta is computed the same way everywhere.
+- `BackgroundRefresher` in the host app: polls Transmission and refreshes
+  the shared cache on `Constants.hostPollInterval` (90s) independent of
+  whether the menu bar dropdown is open, and calls `reloadWidget()` on
+  the more conservative `Constants.widgetReloadInterval` (15 min) to
+  respect WidgetKit's system-wide reload budget.
+- `Constants.cacheStalenessThreshold` — if the cache is older than this,
+  the host app's poller isn't running, and `TorrentProvider.getTimeline`
+  falls back to fetching directly instead of showing stale data forever.
+- "Updated X ago" indicator directly on the widget (previously only
+  shown in the host app's dropdown).
+
+### Changed
+- Refresh architecture: the widget's `TorrentProvider.getTimeline` is now
+  cache-first, reading whatever the host app's background poller last
+  wrote instead of doing its own network fetch on every timeline
+  request. This was a response to a real constraint, not just a
+  preference — WidgetKit's reload budget applies no matter who triggers
+  the reload, so hammering `reloadTimelines()` more often doesn't buy
+  more frequent visual updates; only the host app's own (unthrottled)
+  background loop can usefully increase freshness.
+- README rewritten: renamed to "Transmission Mac Widget," project
+  setup/structure walkthroughs and the "Developing without hitting the
+  real server" section removed, "Notes on the design" removed, "Things
+  you may want to change" renamed to "Warnings," and Transmission-side
+  settings generalized (no specific server hostname or Tailscale
+  references).
+
 - Per-configuration bundle identifiers (`.debug` suffix on Debug builds)
   so a Debug build can install and run side-by-side with a Release build.
 - Widget extension scheme declared in `project.yml` so `xcodegen generate`
