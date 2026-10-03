@@ -26,6 +26,6 @@
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Connects to your Transmission server on your local network to show torrent status.</string>
+	<string>Connects to your Transmission or qBittorrent server on your local network to show torrent status.</string>
 </dict>
 </plist>

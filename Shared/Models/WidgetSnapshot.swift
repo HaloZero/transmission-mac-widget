@@ -24,19 +24,22 @@ struct WidgetSnapshot: Codable {
 
     static let empty = WidgetSnapshot(rows: [], fetchedAt: .distantPast, errorMessage: nil)
 
-    private static let key = "widgetSnapshot"
-
-    static func load() -> WidgetSnapshot {
-        guard let data = UserDefaults.standard.data(forKey: key),
+    /// Keyed by `TorrentWidgetConfigurationIntent.cacheKey` (server+backend)
+    /// rather than one fixed key — there's no App Group, so this lives in
+    /// `UserDefaults.standard`, which is process-wide; without a per-config
+    /// key, two differently-configured widget instances would clobber each
+    /// other's cache.
+    static func load(cacheKey: String) -> WidgetSnapshot {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey),
               let decoded = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
             return .empty
         }
         return decoded
     }
 
-    func save() {
+    func save(cacheKey: String) {
         if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: WidgetSnapshot.key)
+            UserDefaults.standard.set(data, forKey: cacheKey)
         }
     }
 }

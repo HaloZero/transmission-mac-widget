@@ -5,7 +5,7 @@ import AppIntents
 import AppKit
 #endif
 
-struct TransmissionWidgetView: View {
+struct TorrentWidgetView: View {
     @Environment(\.widgetFamily) private var environmentFamily
     let entry: TorrentEntry
 
@@ -154,51 +154,51 @@ private struct PieSlice: Shape {
     }
 }
 
-struct TransmissionWidget: Widget {
-    let kind = "TransmissionWidget"
+struct TorrentWidget: Widget {
+    let kind = "TorrentWidget"
 
     var body: some WidgetConfiguration {
         AppIntentConfiguration(
             kind: kind,
-            intent: TransmissionWidgetConfigurationIntent.self,
+            intent: TorrentWidgetConfigurationIntent.self,
             provider: TorrentProvider()
         ) { entry in
-            TransmissionWidgetView(entry: entry)
+            TorrentWidgetView(entry: entry)
         }
         .configurationDisplayName(configurationDisplayName)
-        .description("Shows your most active torrents.")
+        .description("Shows your most active torrents from Transmission or qBittorrent.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 
     private var configurationDisplayName: String {
         #if DEBUG
-        "Transmission (Debug)"
+        "Torrent Widget (Debug)"
         #else
-        "Transmission"
+        "Torrent Widget"
         #endif
     }
 }
 
 #Preview(as: .systemMedium) {
-    TransmissionWidget()
+    TorrentWidget()
 } timeline: {
     TorrentEntry(date: .now, rows: TorrentInfo.fixtures, errorMessage: nil)
 }
 
 #Preview(as: .systemLarge) {
-    TransmissionWidget()
+    TorrentWidget()
 } timeline: {
     TorrentEntry(date: .now, rows: TorrentInfo.fixtures, errorMessage: nil)
 }
 
 #Preview("Empty", as: .systemMedium) {
-    TransmissionWidget()
+    TorrentWidget()
 } timeline: {
     TorrentEntry(date: .now, rows: [], errorMessage: nil)
 }
 
 #Preview("Error", as: .systemMedium) {
-    TransmissionWidget()
+    TorrentWidget()
 } timeline: {
-    TorrentEntry(date: .now, rows: [], errorMessage: "Could not reach Transmission")
+    TorrentEntry(date: .now, rows: [], errorMessage: "Could not reach the server")
 }

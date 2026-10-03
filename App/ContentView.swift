@@ -9,8 +9,8 @@ import AppKit
 struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Transmission").font(.headline)
-            Text("Configure the server from the widget itself: long-press it, then choose Edit Widget.")
+            Text("Torrent Widget").font(.headline)
+            Text("Configure the server and backend (Transmission or qBittorrent) from the widget itself: long-press it, then choose Edit Widget.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

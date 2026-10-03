@@ -1,7 +1,7 @@
 import Foundation
 
 /// Built directly from the widget's configuration intent each time a fetch
-/// runs (see TransmissionWidgetConfigurationIntent) — WidgetKit already
+/// runs (see TorrentWidgetConfigurationIntent) — WidgetKit already
 /// persists the intent's own parameter values per widget instance, so
 /// nothing here needs its own storage or an App Group.
 struct TransmissionSettings {

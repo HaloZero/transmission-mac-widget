@@ -9,9 +9,9 @@ import Foundation
 ///
 /// The widget extension is the only thing that ever constructs this (see
 /// TorrentProvider) — there's no host-side fetching anymore.
-/// `TransmissionRPCError` (which `MockTransmissionClient` also throws) lives
-/// in Shared/TransmissionFetching.swift instead, alongside the protocol.
-actor TransmissionRPCClient: TransmissionFetching {
+/// `TorrentClientError` (which every client throws) lives in
+/// Shared/TorrentFetching.swift instead, alongside the protocol.
+actor TransmissionRPCClient: TorrentFetching {
     private var sessionID: String?
     private let settings: TransmissionSettings
     private let password: String?
@@ -37,7 +37,7 @@ actor TransmissionRPCClient: TransmissionFetching {
             let arguments = json["arguments"] as? [String: Any],
             let torrents = arguments["torrents"] as? [[String: Any]]
         else {
-            throw TransmissionRPCError.badResponse
+            throw TorrentClientError.badResponse
         }
 
         let parsed: [TorrentInfo] = torrents.compactMap { dict in
@@ -50,7 +50,7 @@ actor TransmissionRPCClient: TransmissionFetching {
             else { return nil }
 
             return TorrentInfo(
-                id: id,
+                id: String(id),
                 name: name,
                 status: status,
                 percentDone: percentDone,
@@ -60,20 +60,7 @@ actor TransmissionRPCClient: TransmissionFetching {
             )
         }
 
-        // Transmission's "status" (downloading/seeding/etc.) just reflects
-        // queue state — a torrent can sit at status == .seeding or
-        // .downloading with zero throughput (no peers requesting/serving
-        // right now). What the widget calls "active" is real, current
-        // byte movement, so filter on the rate fields rather than status.
-        let moving = parsed.filter { $0.rateDownload > 0 || $0.rateUpload > 0 }
-
-        let sorted = moving.sorted { lhs, rhs in
-            let lhsRate = lhs.rateDownload + lhs.rateUpload
-            let rhsRate = rhs.rateDownload + rhs.rateUpload
-            return lhsRate > rhsRate
-        }
-
-        return Array(sorted.prefix(limit))
+        return parsed.topActive(limit: limit)
     }
 
     /// All-time cumulative download/upload totals from Transmission's own
@@ -91,7 +78,7 @@ actor TransmissionRPCClient: TransmissionFetching {
             let downloaded = cumulative["downloadedBytes"] as? Int,
             let uploaded = cumulative["uploadedBytes"] as? Int
         else {
-            throw TransmissionRPCError.badResponse
+            throw TorrentClientError.badResponse
         }
 
         return SessionTotals(downloadedBytes: downloaded, uploadedBytes: uploaded)
@@ -100,7 +87,7 @@ actor TransmissionRPCClient: TransmissionFetching {
     // MARK: - Transport
 
     private func send(_ payload: [String: Any]) async throws -> [String: Any] {
-        guard let url = settings.baseURL else { throw TransmissionRPCError.noBaseURL }
+        guard let url = settings.baseURL else { throw TorrentClientError.noBaseURL }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -110,34 +97,34 @@ actor TransmissionRPCClient: TransmissionFetching {
         if let sessionID { request.setValue(sessionID, forHTTPHeaderField: "X-Transmission-Session-Id") }
 
         let (data, response) = try await urlSession.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw TransmissionRPCError.badResponse }
+        guard let http = response as? HTTPURLResponse else { throw TorrentClientError.badResponse }
 
         // Session ID missing or stale — Transmission hands back the current
         // one and expects a single retry.
         if http.statusCode == 409 {
             guard let freshID = http.value(forHTTPHeaderField: "X-Transmission-Session-Id") else {
-                throw TransmissionRPCError.http(409)
+                throw TorrentClientError.http(409)
             }
             sessionID = freshID
             var retry = request
             retry.setValue(freshID, forHTTPHeaderField: "X-Transmission-Session-Id")
             let (retryData, retryResponse) = try await urlSession.data(for: retry)
             guard let retryHTTP = retryResponse as? HTTPURLResponse, retryHTTP.statusCode == 200 else {
-                throw TransmissionRPCError.http((retryResponse as? HTTPURLResponse)?.statusCode ?? -1)
+                throw TorrentClientError.http((retryResponse as? HTTPURLResponse)?.statusCode ?? -1)
             }
             return try decodeRPC(retryData)
         }
 
-        guard http.statusCode == 200 else { throw TransmissionRPCError.http(http.statusCode) }
+        guard http.statusCode == 200 else { throw TorrentClientError.http(http.statusCode) }
         return try decodeRPC(data)
     }
 
     private func decodeRPC(_ data: Data) throws -> [String: Any] {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw TransmissionRPCError.badResponse
+            throw TorrentClientError.badResponse
         }
         if let result = json["result"] as? String, result != "success" {
-            throw TransmissionRPCError.rpc(result)
+            throw TorrentClientError.rpc(result)
         }
         return json
     }

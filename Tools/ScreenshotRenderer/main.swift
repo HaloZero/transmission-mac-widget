@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import WidgetKit
 
-// Renders TransmissionWidgetView off-screen via ImageRenderer, using
+// Renders TorrentWidgetView off-screen via ImageRenderer, using
 // TorrentInfo.fixtures — no live widget host, no screen capture, no
 // permissions. Run via `make screenshots`; see Scripts/render-screenshots.sh.
 
@@ -12,11 +12,26 @@ let widgetSizes: [(family: WidgetFamily, size: CGSize, filename: String)] = [
     (.systemLarge, CGSize(width: 329, height: 345), "widget-large.png")
 ]
 
+// Widget corner radius Apple uses for macOS desktop widgets at this size class.
+let widgetCornerRadius: CGFloat = 24
+
 @MainActor
 func renderPNG(family: WidgetFamily, size: CGSize) -> Data? {
     let entry = TorrentEntry(date: Date(), rows: TorrentInfo.fixtures, errorMessage: nil)
-    let view = TransmissionWidgetView(entry: entry, family: family)
+
+    // `.containerBackground(_:for:)` is a no-op outside of an actual WidgetKit
+    // host — ImageRenderer gives it no backdrop to draw into — so standing
+    // this view up on its own renders fully transparent behind the content.
+    // Stand in an explicit opaque, rounded backdrop here so the PNG looks
+    // like the real hosted widget instead of floating text on nothing.
+    let view = TorrentWidgetView(entry: entry, family: family)
         .frame(width: size.width, height: size.height)
+        .background(
+            RoundedRectangle(cornerRadius: widgetCornerRadius, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: widgetCornerRadius, style: .continuous))
+        .environment(\.colorScheme, .light)
 
     let renderer = ImageRenderer(content: view)
     renderer.scale = 2.0

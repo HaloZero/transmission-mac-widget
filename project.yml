@@ -1,4 +1,4 @@
-name: TransmissionWidgetHost
+name: TorrentMacWidget
 
 options:
   bundleIdPrefix: com.halozero
@@ -15,7 +15,7 @@ settings:
     DEVELOPMENT_TEAM: "78SRTVN985"
 
 targets:
-  TransmissionWidgetHost:
+  TorrentMacWidget:
     type: application
     platform: macOS
     sources:
@@ -30,24 +30,24 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.transmissionwidget.debug
-          INFOPLIST_KEY_CFBundleDisplayName: "TransmissionWidget Debug"
+          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.torrentmacwidget.debug
+          INFOPLIST_KEY_CFBundleDisplayName: "Torrent Widget Debug"
         Release:
-          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.transmissionwidget
-          INFOPLIST_KEY_CFBundleDisplayName: "TransmissionWidget"
+          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.torrentmacwidget
+          INFOPLIST_KEY_CFBundleDisplayName: "Torrent Widget"
     entitlements:
-      path: App/TransmissionWidgetHost.entitlements
+      path: App/TorrentMacWidget.entitlements
       properties:
         # This app does nothing but show a menu bar icon + Quit — the widget
         # extension owns fetching, caching, and configuration entirely on
         # its own. No network/App Group/Keychain entitlements needed here.
         com.apple.security.app-sandbox: true
     dependencies:
-      - target: TransmissionWidgetExtension
+      - target: TorrentMacWidgetExtension
         embed: true
         codeSign: true
 
-  TransmissionWidgetExtension:
+  TorrentMacWidgetExtension:
     type: app-extension
     platform: macOS
     sources:
@@ -59,20 +59,20 @@ targets:
         SKIP_INSTALL: "YES"
       configs:
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.transmissionwidget.debug.widget
-          WIDGET_DISPLAY_NAME: "TransmissionWidget Debug"
+          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.torrentmacwidget.debug.widget
+          WIDGET_DISPLAY_NAME: "Torrent Widget Debug"
         Release:
-          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.transmissionwidget.widget
-          WIDGET_DISPLAY_NAME: "TransmissionWidget"
+          PRODUCT_BUNDLE_IDENTIFIER: com.halozero.torrentmacwidget.widget
+          WIDGET_DISPLAY_NAME: "Torrent Widget"
     info:
       path: Widget/Info.plist
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         CFBundleDisplayName: "$(WIDGET_DISPLAY_NAME)"
-        NSLocalNetworkUsageDescription: "Connects to your Transmission server on your local network to show torrent status."
+        NSLocalNetworkUsageDescription: "Connects to your Transmission or qBittorrent server on your local network to show torrent status."
     entitlements:
-      path: Widget/TransmissionWidgetExtension.entitlements
+      path: Widget/TorrentMacWidgetExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
@@ -82,27 +82,27 @@ targets:
     platform: macOS
     sources:
       - path: Shared
-      - path: Widget/TransmissionWidgetView.swift
+      - path: Widget/TorrentWidgetView.swift
       - path: Widget/TorrentEntry.swift
       - path: Widget/TorrentProvider.swift
-      - path: Widget/TransmissionWidgetConfigurationIntent.swift
+      - path: Widget/TorrentWidgetConfigurationIntent.swift
       - path: Tools/ScreenshotRenderer
     settings:
       base:
         CODE_SIGNING_ALLOWED: "NO"
 
 schemes:
-  TransmissionWidgetHost:
+  TorrentMacWidget:
     build:
       targets:
-        TransmissionWidgetHost: all
+        TorrentMacWidget: all
     run:
       config: Debug
 
-  TransmissionWidgetExtension:
+  TorrentMacWidgetExtension:
     build:
       targets:
-        TransmissionWidgetExtension: all
+        TorrentMacWidgetExtension: all
     run:
       config: Debug
 

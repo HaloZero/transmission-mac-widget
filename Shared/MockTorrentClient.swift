@@ -1,9 +1,9 @@
 import Foundation
 
-/// Stands in for `TransmissionRPCClient` — no network, no Keychain, no App
-/// Group. Safe to use from Xcode Previews or anywhere the real server isn't
-/// reachable.
-actor MockTransmissionClient: TransmissionFetching {
+/// Stands in for a real client (`TransmissionRPCClient`/`QBittorrentClient`)
+/// — no network, no Keychain, no App Group. Safe to use from Xcode Previews
+/// or anywhere the real server isn't reachable.
+actor MockTorrentClient: TorrentFetching {
     enum Scenario: String {
         case normal    // a realistic mixed set of torrents
         case tooManyTorrents  // a realistic mixed set of too many torrents to display
@@ -30,7 +30,7 @@ actor MockTransmissionClient: TransmissionFetching {
         case .empty:
             return []
         case .failure:
-            throw TransmissionRPCError.rpc("Mock failure — simulated RPC error")
+            throw TorrentClientError.rpc("Mock failure — simulated RPC error")
         }
     }
 
@@ -39,7 +39,7 @@ actor MockTransmissionClient: TransmissionFetching {
 
         switch scenario {
         case .failure:
-            throw TransmissionRPCError.rpc("Mock failure — simulated RPC error")
+            throw TorrentClientError.rpc("Mock failure — simulated RPC error")
         case .empty:
             return SessionTotals(downloadedBytes: 0, uploadedBytes: 0)
         case .normal, .tooManyTorrents:
@@ -55,22 +55,22 @@ actor MockTransmissionClient: TransmissionFetching {
 }
 
 #if DEBUG
-extension MockTransmissionClient.Scenario {
+extension MockTorrentClient.Scenario {
     /// Force a scenario for local testing by editing this line directly and
     /// rebuilding — no shared storage needed, since the widget is the only
     /// process that reads it. Leave `nil` (the default) for live data; this
     /// entire file is compiled out of Release builds by `#if DEBUG`.
-    static let hardcoded: MockTransmissionClient.Scenario? = nil
+    static let hardcoded: MockTorrentClient.Scenario? = nil
 
     /// What's actually forced right now — just `hardcoded` above, checked
     /// wherever data would otherwise be fetched.
-    static var forced: MockTransmissionClient.Scenario? { hardcoded }
+    static var forced: MockTorrentClient.Scenario? { hardcoded }
 
     /// Runs this scenario through the mock client and returns a ready-to-
     /// display snapshot — the one place that turns "which scenario" into
     /// concrete rows/error text.
-    func makeSnapshot() async -> WidgetSnapshot {
-        await SnapshotFetcher.fetch(using: MockTransmissionClient(scenario: self))
+    func makeSnapshot(cacheKey: String) async -> WidgetSnapshot {
+        await SnapshotFetcher.fetch(using: MockTorrentClient(scenario: self), cacheKey: cacheKey)
     }
 }
 #endif
@@ -80,17 +80,17 @@ extension TorrentInfo {
     /// checking, stopped) so a Preview actually exercises the icons and
     /// progress bars instead of just one happy-path row.
     static let fixtures: [TorrentInfo] = [
-        TorrentInfo(id: 1, name: "ubuntu-24.04.1-desktop-amd64.iso", status: .downloading, percentDone: 0.42, rateDownload: 6_800_000, rateUpload: 45_000, eta: 640),
-        TorrentInfo(id: 2, name: "Some.Documentary.2025.1080p.WEB", status: .downloading, percentDone: 0.88, rateDownload: 1_200_000, rateUpload: 0, eta: 95),
-        TorrentInfo(id: 3, name: "Podcast.Archive.Vol03", status: .seeding, percentDone: 1.0, rateDownload: 0, rateUpload: 950_000, eta: -1),
-        TorrentInfo(id: 4, name: "debian-12.6.0-amd64-netinst.iso", status: .checking, percentDone: 0.15, rateDownload: 0, rateUpload: 0, eta: -2),
-        TorrentInfo(id: 5, name: "Old.Show.S01.Complete", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1),
-        TorrentInfo(id: 6, name: "Linux.Conf.Talks.2026", status: .downloading, percentDone: 0.07, rateDownload: 320_000, rateUpload: 0, eta: 4200),
-        TorrentInfo(id: 7, name: "macOS-27-Installer.dmg", status: .downloading, percentDone: 0.63, rateDownload: 9_400_000, rateUpload: 0, eta: 210),
-        TorrentInfo(id: 8, name: "Photography.RAW.Archive.zip", status: .seeding, percentDone: 1.0, rateDownload: 0, rateUpload: 480_000, eta: -1),
-        TorrentInfo(id: 9, name: "Retro.Game.Collection.7z", status: .checkWaiting, percentDone: 0.0, rateDownload: 0, rateUpload: 0, eta: -2),
-        TorrentInfo(id: 10, name: "Symphony.No.9.Beethoven.flac", status: .downloading, percentDone: 0.95, rateDownload: 210_000, rateUpload: 0, eta: 12),
-        TorrentInfo(id: 11, name: "Documentary.Series.S02.Complete", status: .seedWaiting, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1),
-        TorrentInfo(id: 12, name: "Old.Distro.Backup.img", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1)
+        TorrentInfo(id: "1", name: "ubuntu-24.04.1-desktop-amd64.iso", status: .downloading, percentDone: 0.42, rateDownload: 6_800_000, rateUpload: 45_000, eta: 640),
+        TorrentInfo(id: "2", name: "Some.Documentary.2025.1080p.WEB", status: .downloading, percentDone: 0.88, rateDownload: 1_200_000, rateUpload: 0, eta: 95),
+        TorrentInfo(id: "3", name: "Podcast.Archive.Vol03", status: .seeding, percentDone: 1.0, rateDownload: 0, rateUpload: 950_000, eta: -1),
+        TorrentInfo(id: "4", name: "debian-12.6.0-amd64-netinst.iso", status: .checking, percentDone: 0.15, rateDownload: 0, rateUpload: 0, eta: -2),
+        TorrentInfo(id: "5", name: "Old.Show.S01.Complete", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1),
+        TorrentInfo(id: "6", name: "Linux.Conf.Talks.2026", status: .downloading, percentDone: 0.07, rateDownload: 320_000, rateUpload: 0, eta: 4200),
+        TorrentInfo(id: "7", name: "macOS-27-Installer.dmg", status: .downloading, percentDone: 0.63, rateDownload: 9_400_000, rateUpload: 0, eta: 210),
+        TorrentInfo(id: "8", name: "Photography.RAW.Archive.zip", status: .seeding, percentDone: 1.0, rateDownload: 0, rateUpload: 480_000, eta: -1),
+        TorrentInfo(id: "9", name: "Retro.Game.Collection.7z", status: .checkWaiting, percentDone: 0.0, rateDownload: 0, rateUpload: 0, eta: -2),
+        TorrentInfo(id: "10", name: "Symphony.No.9.Beethoven.flac", status: .downloading, percentDone: 0.95, rateDownload: 210_000, rateUpload: 0, eta: 12),
+        TorrentInfo(id: "11", name: "Documentary.Series.S02.Complete", status: .seedWaiting, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1),
+        TorrentInfo(id: "12", name: "Old.Distro.Backup.img", status: .stopped, percentDone: 1.0, rateDownload: 0, rateUpload: 0, eta: -1)
     ]
 }

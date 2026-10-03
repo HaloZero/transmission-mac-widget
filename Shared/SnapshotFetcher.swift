@@ -7,8 +7,8 @@ import Foundation
 enum SnapshotFetcher {
     /// On failure, carries the previous cached rows/totals forward with the
     /// new error message rather than losing them.
-    static func fetch(using client: any TransmissionFetching) async -> WidgetSnapshot {
-        let previous = WidgetSnapshot.load()
+    static func fetch(using client: any TorrentFetching, cacheKey: String) async -> WidgetSnapshot {
+        let previous = WidgetSnapshot.load(cacheKey: cacheKey)
         do {
             async let rowsTask = client.fetchTopTorrents(limit: Constants.fetchLimit)
             async let totalsTask = client.fetchSessionTotals()

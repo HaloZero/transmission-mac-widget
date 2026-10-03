@@ -1,7 +1,11 @@
 import Foundation
 
 struct TorrentInfo: Codable, Identifiable, Equatable {
-    let id: Int
+    // String, not Int: Transmission IDs are numeric, but qBittorrent
+    // identifies torrents by hash string — generalized here rather than
+    // forcing qBittorrent's hash into a fake Int. Only ever used for
+    // Identifiable/display, never arithmetic.
+    let id: String
     let name: String
     let status: TorrentStatus
     let percentDone: Double   // 0.0 ... 1.0

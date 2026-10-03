@@ -1,5 +1,5 @@
-SCHEME := TransmissionWidgetHost
-PROJECT := TransmissionWidgetHost.xcodeproj
+SCHEME := TorrentMacWidget
+PROJECT := TorrentMacWidget.xcodeproj
 CONFIGURATION := Release
 BUILD_DIR := build
 ARCHIVE_PATH := $(BUILD_DIR)/$(SCHEME).xcarchive
@@ -61,7 +61,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 	xcodebuild clean -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION)
 
-# Renders TransmissionWidgetView off-screen with fixture data (no live
+# Renders TorrentWidgetView off-screen with fixture data (no live
 # widget host, no screen recording permission needed) and writes the result
 # to Screenshots/. Run after a UI change to refresh the README's images.
 screenshots: generate

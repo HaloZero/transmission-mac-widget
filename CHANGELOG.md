@@ -8,6 +8,36 @@ project doesn't cut versioned releases yet, so entries are grouped under
 ## [Unreleased]
 
 ### Added
+- qBittorrent as a second backend, selectable per widget instance
+  alongside Transmission (`QBittorrentClient`, talking to qBittorrent's
+  Web API — login, `torrents/info`, `sync/maindata`). `TorrentFetching`
+  (renamed from `TransmissionFetching`) and `TorrentClientError` (renamed
+  from `TransmissionRPCError`, gained `.authenticationFailed`) are now
+  backend-neutral; `TorrentInfo.id` generalized from `Int` to `String`
+  since qBittorrent identifies torrents by hash rather than a numeric ID.
+- `Edit Widget`'s configuration intent gained a `Backend` picker
+  (`TorrentWidgetConfigurationIntent`, formerly
+  `TransmissionWidgetConfigurationIntent`).
+- `WidgetSnapshot`'s cache is now keyed per server+backend
+  (`TorrentWidgetConfigurationIntent.cacheKey`) instead of one fixed
+  `UserDefaults` key — otherwise two differently-configured widget
+  instances (e.g. one Transmission, one qBittorrent) would clobber each
+  other's cached rows, since there's no App Group.
+
+### Changed
+- Project renamed from "Transmission Mac Widget"/`TransmissionWidgetHost`
+  to "Torrent Mac Widget"/`TorrentMacWidget` to reflect the multi-backend
+  support — new bundle IDs (`com.halozero.torrentmacwidget*`), new
+  target/scheme names, widget kind `TransmissionWidget` → `TorrentWidget`.
+  Since there's no App Group, this is a fresh app install; existing
+  widgets need to be re-added and reconfigured once.
+- `Tools/ScreenshotRenderer` now renders against an explicit opaque,
+  rounded backdrop instead of relying on `.containerBackground`, which is
+  a no-op outside a real WidgetKit host — screenshots were rendering with
+  a fully transparent background (readable only by accident, against a
+  light host page).
+
+### Added
 - `SessionTotals` and `WidgetSnapshot.downloadedSinceLastRefresh`/
   `uploadedSinceLastRefresh`, computed from Transmission's `session-stats`
   RPC (`cumulative-stats`, not `current-stats`, so a daemon restart can't

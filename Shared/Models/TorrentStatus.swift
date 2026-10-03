@@ -31,3 +31,31 @@ enum TorrentStatus: Int, Codable {
         }
     }
 }
+
+extension TorrentStatus {
+    /// Maps qBittorrent's `state` string (`torrents/info` response) onto
+    /// the same status set Transmission uses. qBittorrent has finer-grained
+    /// states (stalled, forced, queued, moving, allocating, error) than
+    /// Transmission's six; each collapses onto its closest Transmission
+    /// analog rather than growing the enum, since nothing in the UI branches
+    /// on qBittorrent-specific nuance. Covers both `pausedDL`/`pausedUP` and
+    /// `stoppedDL`/`stoppedUP` — qBittorrent 5.x renamed its pause/resume
+    /// terminology to stop/start, confirmed live against a real server
+    /// returning `stoppedDL`.
+    init(qbittorrentState: String) {
+        switch qbittorrentState {
+        case "downloading", "forcedDL", "metaDL", "stalledDL", "allocating":
+            self = .downloading
+        case "queuedDL":
+            self = .downloadWaiting
+        case "uploading", "forcedUP", "stalledUP", "moving":
+            self = .seeding
+        case "queuedUP":
+            self = .seedWaiting
+        case "checkingDL", "checkingUP", "checkingResumeData":
+            self = .checking
+        default: // pausedDL, pausedUP, stoppedDL, stoppedUP, error, missingFiles, ...
+            self = .stopped
+        }
+    }
+}

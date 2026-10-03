@@ -1,9 +1,11 @@
-# Transmission Mac Widget
+# Torrent Mac Widget
 
 A macOS menu-bar app + WidgetKit widget that shows your most active
-Transmission torrents (status, progress, ↓/↑ rate), talking directly to
-Transmission's RPC endpoint — the same one `transmission-remote` and the
-web UI use.
+torrents (status, progress, ↓/↑ rate), talking directly to your torrent
+daemon's API — no separate agent or App Group required. Supports two
+backends, chosen per widget instance: **Transmission** (its RPC endpoint,
+the same one `transmission-remote` and its web UI use) and **qBittorrent**
+(its Web API).
 
 | `.systemMedium` | `.systemLarge` |
 | --- | --- |
@@ -37,7 +39,7 @@ archive/export flow that would otherwise mean clicking through Xcode's
 Organizer by hand:
 
 - `make app` — archives (Release) and exports a signed
-  `TransmissionWidgetHost.app` to `build/export/`.
+  `TorrentMacWidget.app` to `build/export/`.
 - `make install` — does the above, then copies the result into
   `/Applications`.
 - `make screenshots` — regenerates the widget images above.
@@ -60,9 +62,13 @@ There's no host app settings window — the widget extension does
 everything on its own (fetching, caching, configuration), and the host
 app is just a menu bar icon with a Quit item. Add the widget (Notification
 Center → Edit Widgets, or long-press an existing one on the Desktop) and
-choose **Edit Widget** to set the host, port, RPC path, HTTPS toggle,
-username, and password. Each widget instance keeps its own configuration,
-managed by WidgetKit itself — no App Group or Keychain sharing involved.
+choose **Edit Widget** to set the backend, host, port, HTTPS toggle, RPC
+path, username, and password. Each widget instance keeps its own
+configuration, managed by WidgetKit itself — no App Group or Keychain
+sharing involved, and you can add multiple widget instances pointed at
+different servers or backends.
+
+### Transmission
 
 In Transmission's settings (`settings.json` or the daemon's web UI
 preferences), you'll want:
@@ -77,6 +83,24 @@ preferences), you'll want:
 - Basic auth (`rpc-authentication-required`, `rpc-username`,
   `rpc-password`) is optional but recommended if the daemon is
   reachable beyond localhost.
+
+### qBittorrent
+
+In qBittorrent's settings (**Tools → Options → Web UI**, or **Settings →
+WebUI** on some builds):
+
+- Enable **Web User Interface (Remote control)** and note its port
+  (qBittorrent's own default is `8080` — different from Transmission's
+  `9091`, and the widget's Port field doesn't change automatically when
+  you switch Backend, so set it explicitly).
+- Set a username and password — the widget always logs in with these even
+  if qBittorrent's **"Bypass authentication for clients on localhost"** is
+  enabled, since requests arrive from wherever this Mac is, not from
+  qBittorrent's own host.
+- The RPC Path field in Edit Widget is Transmission-only and ignored for
+  qBittorrent (its Web API always lives under a fixed `/api/v2/...`); it's
+  still shown either way since WidgetKit can't conditionally hide a
+  parameter based on another one's value.
 
 ## Warnings
 
